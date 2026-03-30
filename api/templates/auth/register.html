@@ -1,0 +1,81 @@
+{% extends "base_dark.html" %}
+{% block title %}Registrera konto — FlashDeal{% endblock %}
+
+{% block content %}
+<div style="max-width:540px;margin:60px auto;padding:0 24px">
+  <div style="text-align:center;margin-bottom:36px">
+    <div class="hero-label">Skapa konto</div>
+    <h2>Välj dina kategorier<br>och kom igång</h2>
+    <p style="color:var(--muted);margin-top:10px;font-size:15px">
+      Gratis att registrera sig. Du väljer själv hur du vill bli notifierad.
+    </p>
+  </div>
+
+  <form method="POST" style="background:var(--ink2);border:1px solid var(--border);border-radius:16px;padding:32px">
+    <div class="form-group">
+      <label class="form-label" for="full_name">Ditt namn</label>
+      <input type="text" name="full_name" id="full_name" class="form-control"
+             placeholder="Förnamn Efternamn" autocomplete="name">
+    </div>
+    <div class="form-group">
+      <label class="form-label" for="email">E-postadress *</label>
+      <input type="email" name="email" id="email" class="form-control"
+             placeholder="din@email.se" required autocomplete="email">
+    </div>
+    <div class="form-group">
+      <label class="form-label" for="phone">Telefonnummer (för SMS)</label>
+      <input type="tel" name="phone" id="phone" class="form-control"
+             placeholder="+46701234567" autocomplete="tel">
+    </div>
+    <div class="form-group">
+      <label class="form-label" for="password">Lösenord *</label>
+      <input type="password" name="password" id="password" class="form-control"
+             placeholder="Minst 8 tecken" required autocomplete="new-password">
+    </div>
+
+    <!-- Notifieringspreferens -->
+    <div class="form-group">
+      <label class="form-label">Hur vill du få notiser?</label>
+      <div style="display:flex;gap:10px;margin-top:4px">
+        <label class="checkbox-item" style="flex:1">
+          <input type="checkbox" name="notify_email" checked>
+          <span>📧 E-post</span>
+        </label>
+        <label class="checkbox-item" style="flex:1">
+          <input type="checkbox" name="notify_sms">
+          <span>📱 SMS</span>
+        </label>
+      </div>
+    </div>
+
+    <!-- Kategorier -->
+    <div class="form-group">
+      <label class="form-label">Vilka kategorier är du intresserad av?</label>
+      <p style="font-size:12px;color:var(--muted2);margin-bottom:10px">
+        Du får bara notiser för de kategorier du väljer.
+      </p>
+      <div class="checkbox-grid">
+        {% for cat in categories %}
+          <label class="checkbox-item">
+            <input type="checkbox" name="categories" value="{{ cat.id }}">
+            <span>{{ cat.icon }} {{ cat.name }}</span>
+          </label>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- GDPR -->
+    <div style="background:var(--ink3);border:1px solid var(--border);border-radius:8px;padding:14px;margin-bottom:20px;font-size:12px;color:var(--muted2)">
+      Genom att registrera dig godkänner du att vi lagrar din e-post och telefon för att
+      skicka erbjudandenotiser. Du kan avregistrera dig när som helst.
+    </div>
+
+    <button type="submit" class="btn btn-primary" style="width:100%;font-size:16px;padding:14px">
+      Skapa konto →
+    </button>
+    <p style="text-align:center;margin-top:16px;font-size:13px;color:var(--muted2)">
+      Har du redan konto? <a href="{{ url_for('auth.login') }}">Logga in</a>
+    </p>
+  </form>
+</div>
+{% endblock %}

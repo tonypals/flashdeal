@@ -1,0 +1,68 @@
+{% extends "base_dark.html" %}
+{% block title %}Bokningsbekräftelse — FlashDeal{% endblock %}
+
+{% block content %}
+<div style="max-width:500px;margin:48px auto;padding:0 24px">
+
+  <div style="text-align:center;margin-bottom:32px">
+    <div style="font-size:56px;margin-bottom:12px">✅</div>
+    <h2 style="font-size:26px;margin-bottom:8px">Bokning bekräftad!</h2>
+    <p style="color:var(--muted);font-size:15px">Visa QR-koden nedan när du hämtar varan.</p>
+  </div>
+
+  <!-- Erbjudandeinfo -->
+  <div style="background:var(--ink2);border:1px solid var(--border);border-radius:14px;padding:22px;margin-bottom:20px">
+    {% if offer and offer.photo_url %}
+      <img src="{{ offer.photo_url }}" style="width:100%;height:160px;object-fit:cover;border-radius:10px;margin-bottom:14px" alt="">
+    {% endif %}
+    <div style="font-weight:700;font-size:18px;margin-bottom:6px">{{ offer.title if offer else 'Erbjudande' }}</div>
+    {% if store %}
+      <div style="font-size:13px;color:var(--muted)">
+        📍 {{ store.business_name }} — {{ store.address or store.city }}
+      </div>
+    {% endif %}
+    {% if store and store.pickup_instructions %}
+      <div style="margin-top:12px;padding:10px 14px;background:var(--ink3);border-radius:8px;font-size:13px;color:var(--muted2)">
+        <strong style="color:var(--text)">Upphämtning:</strong> {{ store.pickup_instructions }}
+      </div>
+    {% endif %}
+  </div>
+
+  <!-- Timer -->
+  <div style="background:#0d2a1a;border:1px solid #1a5030;border-radius:10px;padding:14px 18px;margin-bottom:20px;display:flex;align-items:center;gap:10px">
+    <div class="timer-dot" style="background:var(--green)"></div>
+    <div>
+      <div style="font-size:13px;color:var(--green);font-weight:600">Hämta senast</div>
+      <div style="font-size:15px;font-weight:700;color:var(--text)">{{ booking.expires_at | timeago }}</div>
+    </div>
+    <div style="margin-left:auto;font-size:22px;font-weight:700;color:var(--accent)">
+      {{ booking.total_paid | price }} kr
+    </div>
+  </div>
+
+  <!-- QR-kod -->
+  <div style="background:var(--ink2);border:1px solid var(--border);border-radius:14px;padding:28px;text-align:center">
+    <div style="font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:16px">Din QR-kod</div>
+    {% if qr_image %}
+      <img src="{{ qr_image }}" alt="QR-kod"
+           style="width:220px;height:220px;border-radius:12px;background:#fff;padding:10px">
+    {% else %}
+      <div style="width:220px;height:220px;background:var(--ink3);border-radius:12px;display:flex;align-items:center;justify-content:center;margin:0 auto;color:var(--muted);font-size:13px">
+        QR kan inte visas
+      </div>
+    {% endif %}
+    <div style="margin-top:16px;font-size:12px;color:var(--soft);font-family:monospace">
+      {{ booking.qr_token[:12] }}...
+    </div>
+    <p style="font-size:12px;color:var(--muted2);margin-top:12px;max-width:280px;margin-inline:auto">
+      Visa den här koden för butikspersonalen. Den fungerar bara en gång och
+      är giltig till {{ booking.expires_at | timeago }}.
+    </p>
+  </div>
+
+  <div style="text-align:center;margin-top:24px;display:flex;gap:12px;justify-content:center;flex-wrap:wrap">
+    <a href="{{ url_for('booking.my_bookings') }}" class="btn btn-ghost">Alla mina bokningar</a>
+    <a href="{{ url_for('public.index') }}" class="btn btn-ghost">Fler erbjudanden →</a>
+  </div>
+</div>
+{% endblock %}

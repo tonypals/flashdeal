@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{% block title %}FlashDeal – Butikspanel{% endblock %}</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/light.css') }}">
+{% block extra_head %}{% endblock %}
+</head>
+<body>
+
+<div class="topbar">
+  <div style="display:flex;align-items:center;gap:16px">
+    <span class="topbar-logo">Flash<span>Deal</span></span>
+    {% if session.get('store_name') %}
+      <span class="topbar-store">{{ session.store_name }}</span>
+    {% endif %}
+  </div>
+  <nav class="topbar-nav">
+    {% if session.get('store_id') and session.get('store_status') == 'approved' %}
+      <a href="{{ url_for('store.dashboard') }}"  class="topbar-link {% if request.endpoint == 'store.dashboard' %}active{% endif %}">Panel</a>
+      <a href="{{ url_for('store.new_offer') }}"  class="topbar-link {% if request.endpoint == 'store.new_offer' %}active{% endif %}">+ Erbjudande</a>
+      <a href="{{ url_for('store.bookings') }}"   class="topbar-link {% if request.endpoint == 'store.bookings' %}active{% endif %}">Bokningar</a>
+      <a href="{{ url_for('store.scanner') }}"    class="topbar-link {% if request.endpoint == 'store.scanner' %}active{% endif %}">📷 Skanna</a>
+      <a href="{{ url_for('store.profile') }}"    class="topbar-link {% if request.endpoint == 'store.profile' %}active{% endif %}">Profil</a>
+    {% endif %}
+    <a href="{{ url_for('auth.logout') }}" class="topbar-link">Logga ut</a>
+  </nav>
+</div>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+    <div class="flash-wrap">
+      {% for category, message in messages %}
+        <div class="flash flash-{{ category }}">{{ message }}</div>
+      {% endfor %}
+    </div>
+  {% endif %}
+{% endwith %}
+
+{% block content %}{% endblock %}
+
+{% block scripts %}{% endblock %}
+</body>
+</html>

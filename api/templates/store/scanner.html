@@ -1,0 +1,64 @@
+{% extends "base_light.html" %}
+{% block title %}QR-skanner — FlashDeal{% endblock %}
+
+{% block content %}
+<div style="max-width:480px;margin:32px auto;padding:0 20px">
+  <div style="text-align:center;margin-bottom:24px">
+    <h2 style="font-size:20px;font-weight:700">📷 Skanna QR-kod</h2>
+    <p style="font-size:13px;color:var(--muted);margin-top:6px">
+      Rikta kameran mot kundens QR-kod. Verifieringen sker automatiskt.
+    </p>
+  </div>
+
+  <div class="scanner-wrap">
+    <video id="scanner-video" class="scanner-video" playsinline muted autoplay></video>
+    <canvas id="scanner-canvas" style="display:none"></canvas>
+    <div id="scanner-result" class="scanner-result">
+      Startar kameran...
+    </div>
+  </div>
+
+  <div style="text-align:center;margin-top:24px">
+    <a href="{{ url_for('store.bookings') }}" class="btn btn-secondary">← Se alla bokningar</a>
+  </div>
+
+  <!-- Manuell inmatning som backup -->
+  <div style="margin-top:32px;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px">
+    <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:12px">Manuell verifiering</div>
+    <form id="manual-form" style="display:flex;gap:10px">
+      <input type="text" id="manual-token" placeholder="Klistra in token..."
+             class="form-control" style="flex:1;font-size:12px;font-family:monospace">
+      <button type="submit" class="btn btn-primary btn-sm">Verifiera</button>
+    </form>
+    <div id="manual-result" style="margin-top:10px;font-size:13px;display:none;padding:10px;border-radius:8px"></div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<!-- jsQR — inläsning av QR-koder i webbläsaren -->
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+<script src="{{ url_for('static', filename='js/scanner.js') }}"></script>
+<script>
+// Manuell token-verifiering
+document.getElementById('manual-form').addEventListener('submit', function(e) {
+  e.preventDefault();
+  const token  = document.getElementById('manual-token').value.trim();
+  const result = document.getElementById('manual-result');
+  if (!token) return;
+
+  fetch(`/butik/skanna/verifiera/${token}`, {method:'POST'})
+  .then(r => r.json())
+  .then(data => {
+    result.style.display    = 'block';
+    result.style.background = data.ok ? '#eef8f4' : '#fef0f0';
+    result.style.color      = data.ok ? 'var(--green)' : 'var(--red)';
+    result.textContent      = data.msg + (data.customer ? ' — ' + data.customer : '');
+  })
+  .catch(() => {
+    result.style.display = 'block';
+    result.textContent   = '⚠️ Nätverksfel';
+  });
+});
+</script>
+{% endblock %}

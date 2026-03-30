@@ -1,0 +1,111 @@
+{% extends "base_dark.html" %}
+{% block title %}FlashDeal — Tidsbegränsade erbjudanden nära dig{% endblock %}
+
+{% block content %}
+<!-- Hero -->
+<section class="hero">
+  <div class="hero-label">⚡ Aktuella erbjudanden</div>
+  <h1 class="hero-title">Riktiga fynd.<br><span>I din stad. Just nu.</span></h1>
+  <p class="hero-sub">Prenumerera på de kategorier du gillar — vi pingar dig när något bra dyker upp i en butik nära dig.</p>
+  <div style="display:flex;gap:12px;flex-wrap:wrap;justify-content:center">
+    {% if not session.get('user_id') %}
+      <a href="{{ url_for('auth.register') }}" class="btn btn-primary btn-lg">Välj mina kategorier</a>
+      <a href="{{ url_for('public.how_it_works') }}" class="btn btn-ghost btn-lg">Hur det fungerar</a>
+    {% endif %}
+  </div>
+</section>
+
+<div class="container">
+  <!-- Kategorifiltret -->
+  <div class="cat-bar">
+    <a href="{{ url_for('public.index') }}" class="cat-pill {% if not active_category %}active{% endif %}">
+      Alla erbjudanden
+    </a>
+    {% for cat in categories %}
+      <a href="{{ url_for('public.index', kategori=cat.slug) }}"
+         class="cat-pill {% if active_category == cat.slug %}active{% endif %}">
+        {{ cat.icon }} {{ cat.name }}
+      </a>
+    {% endfor %}
+  </div>
+
+  <!-- Erbjudanden -->
+  {% if offers %}
+    <div class="offers-grid">
+      {% for offer in offers %}
+        {% set store = offer.store or {} %}
+        {% set pct = ((1 - offer.deal_price / offer.original_price) * 100) | int if offer.original_price and offer.deal_price and offer.original_price > 0 else 0 %}
+        <a href="{{ url_for('public.offer_detail', offer_id=offer.id) }}" style="text-decoration:none">
+          <div class="offer-card">
+            <div class="offer-img">
+              {% if offer.photo_url %}
+                <img src="{{ offer.photo_url }}" alt="{{ offer.title }}">
+              {% else %}
+                {% set icons = {'elektronik':'📱','klader-skor':'👗','mat-dryck':'🍞','hem-inredning':'🛋️','sport-fritid':'🏃','skonhet-halsa':'💄','cykel':'🚲','bocker-media':'📚','leksaker-hobby':'🎮','bygg-verktyg':'🔧'} %}
+                <span style="font-size:52px">{{ icons.get(offer.get('category_slug',''), '🏷️') }}</span>
+              {% endif %}
+              {% if pct > 0 %}
+                <div class="offer-badge">-{{ pct }}%</div>
+              {% endif %}
+            </div>
+            <div class="offer-body">
+              <div class="offer-store">{{ store.get('business_name','') }} · {{ store.get('city','') }}</div>
+              <div class="offer-title">{{ offer.title }}</div>
+              <div class="offer-price-row">
+                <span class="offer-price">{{ offer.deal_price | price }} kr</span>
+                {% if offer.original_price %}
+                  <span class="offer-orig">{{ offer.original_price | price }} kr</span>
+                {% endif %}
+              </div>
+              <div class="offer-timer">
+                <div class="timer-dot"></div>
+                {{ offer.expires_at | timeago }}
+                &nbsp;·&nbsp; {{ offer.remaining_qty }} st kvar
+              </div>
+            </div>
+            <div class="offer-footer">
+              <span class="btn btn-primary" style="width:100%;text-align:center">Boka nu →</span>
+            </div>
+          </div>
+        </a>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div style="text-align:center;padding:80px 20px;color:var(--muted2)">
+      <div style="font-size:52px;margin-bottom:16px">🔍</div>
+      <h3 style="font-family:'DM Sans',sans-serif;font-weight:400">Inga aktiva erbjudanden just nu</h3>
+      <p style="margin-top:8px;font-size:14px">Kom tillbaka senare eller ändra kategorifilter.</p>
+      {% if not session.get('user_id') %}
+        <a href="{{ url_for('auth.register') }}" class="btn btn-primary" style="margin-top:20px;display:inline-flex">
+          Prenumerera — få notis direkt
+        </a>
+      {% endif %}
+    </div>
+  {% endif %}
+</div>
+
+<!-- Hur det fungerar (mini) -->
+{% if not offers %}{% else %}
+<div class="container" style="margin-top:80px;padding-bottom:40px">
+  <div style="text-align:center;margin-bottom:40px">
+    <div class="hero-label">Enkelt som det låter</div>
+    <h2>Så här fungerar FlashDeal</h2>
+  </div>
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:24px">
+    {% for step in [
+      ('1', '📲', 'Prenumerera', 'Välj de kategorier du är intresserad av — Elektronik, Mode, Mat...'),
+      ('2', '🔔', 'Få notis', 'Vi pingar dig via mail eller SMS när en butik i din kategori publicerar ett deal.'),
+      ('3', '💳', 'Boka & betala', 'Klicka, betala direkt och få en unik QR-kod. Tar under 30 sekunder.'),
+      ('4', '🏪', 'Hämta', 'Ta dig till butiken inom tidsfönstret och visa din QR-kod. Klart!'),
+    ] %}
+      <div style="text-align:center;padding:28px 20px;background:var(--ink2);border:1px solid var(--border);border-radius:14px">
+        <div style="font-size:36px;margin-bottom:12px">{{ step[1] }}</div>
+        <div style="font-size:11px;letter-spacing:2px;color:var(--accent);text-transform:uppercase;margin-bottom:8px">Steg {{ step[0] }}</div>
+        <div style="font-size:16px;font-weight:600;margin-bottom:8px">{{ step[2] }}</div>
+        <div style="font-size:13px;color:var(--muted)">{{ step[3] }}</div>
+      </div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+{% endblock %}
