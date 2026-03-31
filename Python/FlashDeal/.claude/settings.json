@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//c/Users/TOPAL02/.claude/**)"
+    ],
+    "additionalDirectories": [
+      "C:\\Users\\TOPAL02\\.claude"
+    ]
+  }
+}

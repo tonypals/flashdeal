@@ -70,7 +70,9 @@ def login():
             session['user_id']   = customer['id']
             session['user_name'] = customer.get('full_name') or email
             session['role']      = 'customer'
-            next_url = request.args.get('next') or url_for('public.index')
+            next_url = request.args.get('next', '')
+            if not next_url.startswith('/'):
+                next_url = url_for('public.index')
             return redirect(next_url)
 
         flash('Fel e-post eller lösenord.', 'error')

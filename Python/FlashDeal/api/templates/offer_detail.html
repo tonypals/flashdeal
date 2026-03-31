@@ -109,13 +109,45 @@
               Skapa konto
             </a>
           {% endif %}
+
+        {% elif offer.status == 'active' and (offer.remaining_qty - booked_qty) <= 0 %}
+          <!-- Utsåld — visa kö-knapp -->
+          <div style="background:var(--ink3);border:1px solid var(--border);border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:13px;color:var(--muted);text-align:center">
+            🔴 Utsåld — men du kan ställa dig i kö
+          </div>
+          {% if session.get('user_id') %}
+            {% if in_queue %}
+              <div class="btn" style="width:100%;background:var(--ink3);color:var(--yellow);cursor:default;justify-content:center">
+                ✓ Du står i kö
+              </div>
+            {% else %}
+              <form action="{{ url_for('booking.join_queue', offer_id=offer.id) }}" method="POST">
+                <button type="submit" class="btn btn-ghost" style="width:100%;font-size:15px;padding:13px;border-color:var(--yellow);color:var(--yellow)">
+                  🕐 Ställ mig i kö
+                </button>
+              </form>
+            {% endif %}
+          {% else %}
+            <a href="{{ url_for('auth.login') }}?next={{ request.path }}" class="btn btn-ghost" style="width:100%;text-align:center;margin-top:8px;border-color:var(--yellow);color:var(--yellow)">
+              Logga in för att ställa dig i kö
+            </a>
+          {% endif %}
+
         {% else %}
           <div class="btn" style="width:100%;background:var(--ink3);color:var(--muted);cursor:default;justify-content:center">
             Inte tillgänglig
           </div>
         {% endif %}
 
-        <p style="font-size:11px;color:var(--soft);text-align:center;margin-top:12px">
+        <!-- Avbokningspolicy — alltid synlig -->
+        <div style="margin-top:16px;background:#1a0a00;border:1px solid #5a2000;border-radius:8px;padding:12px 14px;font-size:12px;color:#c07040;line-height:1.6">
+          <strong style="display:block;margin-bottom:4px">⚠️ Viktigt att veta</strong>
+          Avbokar du <strong>innan</strong> pickup-fönstret startar får du full återbetalning.<br>
+          Avbokar du <strong>under</strong> eller uteblir utan att avboka — ingen återbetalning.<br>
+          Tidsfönstret är hårt. Alla har rätt tid i sin mobil.
+        </div>
+
+        <p style="font-size:11px;color:var(--soft);text-align:center;margin-top:10px">
           Betalning sker direkt vid bokning
         </p>
       </div>

@@ -107,6 +107,10 @@ def new_offer():
         if 'photo' in request.files:
             file = request.files['photo']
             if file and file.filename:
+                allowed_mimes = {'image/jpeg', 'image/png', 'image/webp', 'image/gif'}
+                if file.content_type not in allowed_mimes:
+                    flash('Ogiltigt filformat. Använd JPG, PNG eller WebP.', 'error')
+                    return render_template('store/new_offer.html', categories=categories)
                 ext      = file.filename.rsplit('.', 1)[-1].lower() if '.' in file.filename else 'jpg'
                 filename = f'{sid}/{secrets.token_hex(8)}.{ext}'
                 photo_url = upload_image(file.read(), filename)
@@ -143,6 +147,122 @@ def new_offer():
     return render_template('store/new_offer.html', categories=categories)
 
 
+# ─── Redigera utkast ─────────────────────────────────────────────────────────
+
+@bp.route('/erbjudande/<offer_id>/redigera', methods=['GET', 'POST'])
+@store_required
+def edit_offer(offer_id):
+    sid   = session['store_id']
+    offer = db.get_one('offers', {'id': offer_id, 'store_id': sid})
+    if not offer or offer.get('status') != 'draft':
+        flash('Kan bara redigera utkast.', 'error')
+        return redirect(url_for('store.dashboard'))
+
+    categories = db.select('categories', order='name')
+
+    if request.method == 'POST':
+        title       = request.form.get('title', '').strip()
+        description = request.form.get('description', '').strip()
+        orig_price  = request.form.get('original_price', '').strip()
+        deal_price  = request.form.get('deal_price', '').strip()
+        quantity    = request.form.get('quantity', '1').strip()
+        cat_id      = request.form.get('category_id')
+        publish_now = 'publish' in request.form
+        expires_date = request.form.get('expires_date', '').strip()
+        expires_time = request.form.get('expires_time', '17:00').strip()
+        pickup_from  = request.form.get('pickup_from', '').strip() or None
+        pickup_to    = request.form.get('pickup_to', '').strip() or None
+
+        if not title or not deal_price or not quantity:
+            flash('Titel, pris och antal är obligatoriska.', 'error')
+            return render_template('store/edit_offer.html', offer=offer, categories=categories)
+
+        try:
+            deal_price_f = float(deal_price)
+            orig_price_f = float(orig_price) if orig_price else None
+            qty          = int(quantity)
+        except ValueError:
+            flash('Ogiltigt pris eller antal.', 'error')
+            return render_template('store/edit_offer.html', offer=offer, categories=categories)
+
+        try:
+            naive = datetime.strptime(f'{expires_date} {expires_time}', '%Y-%m-%d %H:%M')
+            expires_at = naive.replace(tzinfo=timezone.utc).isoformat()
+        except (ValueError, TypeError):
+            expires_at = offer.get('expires_at')
+
+        pickup_window = None
+        if pickup_from and pickup_to:
+            pickup_window = f'{pickup_from}–{pickup_to}'
+        elif pickup_from:
+            pickup_window = f'från {pickup_from}'
+        elif pickup_to:
+            pickup_window = f'senast {pickup_to}'
+
+        photo_url = offer.get('photo_url')
+        if 'photo' in request.files:
+            file = request.files['photo']
+            if file and file.filename:
+                ext      = file.filename.rsplit('.', 1)[-1].lower() if '.' in file.filename else 'jpg'
+                filename = f'{sid}/{secrets.token_hex(8)}.{ext}'
+                photo_url = upload_image(file.read(), filename)
+
+        status = 'active' if publish_now else 'draft'
+        updated = db.update('offers', {'id': offer_id}, {
+            'category_id':    cat_id or None,
+            'title':          title,
+            'description':    description or None,
+            'original_price': orig_price_f,
+            'deal_price':     deal_price_f,
+            'total_quantity': qty,
+            'remaining_qty':  qty,
+            'photo_url':      photo_url,
+            'expires_at':     expires_at,
+            'pickup_window':  pickup_window,
+            'status':         status,
+        })
+
+        if not updated:
+            flash('Något gick fel. Försök igen.', 'error')
+            return render_template('store/edit_offer.html', offer=offer, categories=categories)
+
+        if status == 'active':
+            notify_subscribers(updated)
+            flash('Erbjudandet är publicerat!', 'success')
+        else:
+            flash('Utkastet är uppdaterat.', 'success')
+        return redirect(url_for('store.dashboard'))
+
+    # Plocka ut datum/tid ur expires_at för formuläret
+    expires_date = ''
+    expires_time = '17:00'
+    pickup_from  = ''
+    pickup_to    = ''
+    if offer.get('expires_at'):
+        try:
+            dt = datetime.fromisoformat(offer['expires_at'].replace('Z', '+00:00'))
+            expires_date = dt.strftime('%Y-%m-%d')
+            expires_time = dt.strftime('%H:%M')
+        except Exception:
+            pass
+    if offer.get('pickup_window'):
+        parts = offer['pickup_window'].replace('från ', '').replace('senast ', '').split('–')
+        if len(parts) == 2:
+            pickup_from, pickup_to = parts[0], parts[1]
+        elif offer['pickup_window'].startswith('från '):
+            pickup_from = parts[0]
+        elif offer['pickup_window'].startswith('senast '):
+            pickup_to = parts[0]
+
+    return render_template('store/edit_offer.html',
+                           offer=offer,
+                           categories=categories,
+                           expires_date=expires_date,
+                           expires_time=expires_time,
+                           pickup_from=pickup_from,
+                           pickup_to=pickup_to)
+
+
 # ─── Publicera / avpublicera erbjudande ──────────────────────────────────────
 
 @bp.route('/erbjudande/<offer_id>/publicera', methods=['POST'])
@@ -154,9 +274,17 @@ def publish_offer(offer_id):
         flash('Erbjudandet hittades inte.', 'error')
         return redirect(url_for('store.dashboard'))
 
-    duration_h = int(request.form.get('duration_hours', 3))
-    expires_at = (datetime.now(timezone.utc) + timedelta(hours=duration_h)).isoformat()
-    updated    = db.update('offers', {'id': offer_id}, {'status': 'active', 'expires_at': expires_at})
+    # Använd befintlig expires_at om den är i framtiden, annars +3h
+    now = datetime.now(timezone.utc)
+    expires_at = offer.get('expires_at')
+    try:
+        existing = datetime.fromisoformat((expires_at or '').replace('Z', '+00:00'))
+        if existing <= now:
+            expires_at = (now + timedelta(hours=3)).isoformat()
+    except Exception:
+        expires_at = (now + timedelta(hours=3)).isoformat()
+
+    updated = db.update('offers', {'id': offer_id}, {'status': 'active', 'expires_at': expires_at})
     if updated:
         notify_subscribers(updated)
         flash('Erbjudandet är nu publicerat!', 'success')

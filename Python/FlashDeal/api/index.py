@@ -21,14 +21,15 @@ def create_app():
     app.config['SESSION_COOKIE_SECURE']   = os.environ.get('FLASK_ENV') == 'production'
     app.config['SESSION_COOKIE_HTTPONLY'] = True
     app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
-    app.config['PERMANENT_SESSION_LIFETIME'] = 60 * 60 * 24 * 30  # 30 dagar
+    app.config['PERMANENT_SESSION_LIFETIME'] = 60 * 60 * 8  # 8 timmar
 
-    # Rate limiting (lagras i minne — OK för Vercel, byt till Redis i prod vid behov)
+    # Rate limiting — Upstash Redis i produktion, memory lokalt
+    # UPSTASH_REDIS_URL måste sättas i Vercel för att fungera serverless
     Limiter(
         get_remote_address,
         app=app,
         default_limits=['200 per day', '50 per hour'],
-        storage_uri='memory://',
+        storage_uri=os.environ.get('UPSTASH_REDIS_URL', 'memory://'),
     )
 
     # ── Registrera blueprints ────────────────────────────────────────────────
@@ -37,12 +38,14 @@ def create_app():
     from api.routes.store    import bp as store_bp
     from api.routes.booking  import bp as booking_bp
     from api.routes.admin    import bp as admin_bp
+    from api.routes.cron     import bp as cron_bp
 
     app.register_blueprint(public_bp)
     app.register_blueprint(auth_bp)
     app.register_blueprint(store_bp,   url_prefix='/butik')
     app.register_blueprint(booking_bp, url_prefix='/betala')
     app.register_blueprint(admin_bp,   url_prefix='/admin')
+    app.register_blueprint(cron_bp,    url_prefix='/intern')
 
     # ── Jinja-filter ─────────────────────────────────────────────────────────
     from api.config import fmt_price

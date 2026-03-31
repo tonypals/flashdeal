@@ -2,7 +2,7 @@
 booking.py — Bokning, Stripe Checkout, bekräftelse, QR
 Prefix: /betala
 """
-import os
+import os, secrets, html as _html
 from datetime import datetime, timezone
 from flask import Blueprint, render_template, request, redirect, url_for, session, flash, jsonify, current_app
 from api.config import db, login_required, generate_qr_base64, send_email, fmt_price
@@ -35,6 +35,9 @@ def checkout(offer_id):
         stripe_key = os.environ.get('STRIPE_SECRET_KEY')
         if stripe_key:
             return _stripe_checkout(offer, store, qty)
+        elif os.environ.get('FLASK_ENV') == 'production':
+            flash('Betalning är inte konfigurerat. Kontakta support.', 'error')
+            return redirect(url_for('public.index'))
         else:
             return _test_checkout(offer, store, qty)
 
@@ -103,6 +106,7 @@ def _test_checkout(offer, store, qty):
         'payment_status': 'paid',
         'status':         'confirmed',
         'expires_at':     expires_at,
+        'qr_token':       secrets.token_urlsafe(32),
     })
     if not booking:
         flash('Något gick fel.', 'error')
@@ -126,9 +130,10 @@ def webhook():
     sig       = request.headers.get('Stripe-Signature', '')
     secret    = os.environ.get('STRIPE_WEBHOOK_SECRET', '')
 
+    if not secret:
+        return jsonify({'error': 'Webhook secret saknas'}), 400
     try:
-        event = stripe.Webhook.construct_event(payload, sig, secret) if secret else \
-                stripe.Event.construct_from(request.json, stripe.api_key)
+        event = stripe.Webhook.construct_event(payload, sig, secret)
     except Exception as e:
         return jsonify({'error': str(e)}), 400
 
@@ -139,38 +144,53 @@ def webhook():
 
 
 def _handle_checkout_completed(sess):
-    meta    = sess.get('metadata', {})
+    meta        = sess.get('metadata', {})
     offer_id    = meta.get('offer_id')
     customer_id = meta.get('customer_id')
     store_id    = meta.get('store_id')
-    qty     = int(meta.get('quantity', 1))
+    qty         = int(meta.get('quantity', 1))
 
     if not offer_id:
         return
 
-    offer  = db.get_one('offers', {'id': offer_id})
-    store  = db.get_one('stores', {'id': store_id}, 'business_name,city')
-    total  = (sess.get('amount_total') or 0) / 100
-    fee    = round(total * _FEE_PCT, 2)
-    expires_at = offer.get('expires_at', '') if offer else ''
+    # Atomisk minskning av remaining_qty via RPC.
+    # Returnerar den uppdaterade offer-raden, eller None om qty inte räckte.
+    offer = db.rpc('fd_decrement_offer_qty', {'p_offer_id': offer_id, 'p_qty': qty})
+
+    if not offer:
+        # Varan är slut — pengarna har redan tagits. Återbetala direkt.
+        pi = sess.get('payment_intent')
+        if pi:
+            try:
+                import stripe
+                stripe.api_key = os.environ.get('STRIPE_SECRET_KEY', '')
+                stripe.Refund.create(payment_intent=pi)
+                print(f'[Webhook] Återbetalning skapad för {pi} — offer {offer_id} slut')
+            except Exception as e:
+                print(f'[Webhook] Återbetalningsfel: {e}')
+        return
+
+    store      = db.get_one('stores', {'id': store_id}, 'business_name,city')
+    total      = (sess.get('amount_total') or 0) / 100
+    fee        = round(total * _FEE_PCT, 2)
+    expires_at = offer.get('expires_at', '')
 
     booking = db.insert('bookings', {
-        'offer_id':               offer_id,
-        'customer_id':            customer_id,
-        'store_id':               store_id,
-        'quantity':               qty,
-        'total_paid':             total,
-        'platform_fee':           fee,
-        'stripe_session_id':      sess.get('id'),
+        'offer_id':                 offer_id,
+        'customer_id':              customer_id,
+        'store_id':                 store_id,
+        'quantity':                 qty,
+        'total_paid':               total,
+        'platform_fee':             fee,
+        'stripe_session_id':        sess.get('id'),
         'stripe_payment_intent_id': sess.get('payment_intent'),
-        'payment_status':         'paid',
-        'status':                 'confirmed',
-        'expires_at':             expires_at,
+        'payment_status':           'paid',
+        'status':                   'confirmed',
+        'expires_at':               expires_at,
+        'qr_token':                 secrets.token_urlsafe(32),
     })
 
-    if booking and offer:
-        db.update('offers', {'id': offer_id},
-                  {'remaining_qty': max(0, offer['remaining_qty'] - qty)})
+    if booking:
         _send_booking_confirmation(booking, offer, store)
 
 
@@ -235,6 +255,140 @@ def my_bookings():
     return render_template('booking/my_bookings.html', bookings=bookings)
 
 
+# ─── Avboka ──────────────────────────────────────────────────────────────────
+
+@bp.route('/avboka/<booking_id>', methods=['POST'])
+@login_required
+def cancel(booking_id):
+    uid     = session['user_id']
+    booking = db.get_one('bookings', {'id': booking_id, 'customer_id': uid})
+
+    if not booking or booking.get('status') != 'confirmed' or booking.get('qr_used'):
+        flash('Bokningen kan inte avbokas.', 'error')
+        return redirect(url_for('booking.my_bookings'))
+
+    now        = datetime.now(timezone.utc)
+    expires_at = booking.get('expires_at', '')
+    try:
+        exp = datetime.fromisoformat(expires_at.replace('Z', '+00:00'))
+    except Exception:
+        exp = now
+
+    # Pickup-fönstret har startat = ingen återbetalning
+    if now >= exp:
+        db.update('bookings', {'id': booking_id}, {'status': 'cancelled'})
+        _activate_next_in_queue(booking['offer_id'])
+        flash('Bokningen avbokades. Ingen återbetalning — hämtningstiden har passerat.', 'info')
+        return redirect(url_for('booking.my_bookings'))
+
+    # Avbokar i tid — återbetala via Stripe om möjligt
+    refunded = False
+    stripe_key = os.environ.get('STRIPE_SECRET_KEY')
+    pi = booking.get('stripe_payment_intent_id')
+    if stripe_key and pi:
+        try:
+            import stripe
+            stripe.api_key = stripe_key
+            stripe.Refund.create(payment_intent=pi)
+            refunded = True
+        except Exception as e:
+            print(f'[Stripe refund error] {e}')
+
+    db.update('bookings', {'id': booking_id}, {
+        'status':         'cancelled',
+        'payment_status': 'refunded' if refunded else 'cancelled',
+    })
+    # Återställ remaining_qty
+    offer = db.get_one('offers', {'id': booking['offer_id']}, 'remaining_qty')
+    if offer:
+        db.update('offers', {'id': booking['offer_id']},
+                  {'remaining_qty': offer['remaining_qty'] + booking.get('quantity', 1)})
+
+    _activate_next_in_queue(booking['offer_id'])
+
+    if refunded:
+        flash('Bokningen avbokades och pengarna återbetalas inom 3–5 bankdagar.', 'success')
+    else:
+        flash('Bokningen avbokades.', 'info')
+    return redirect(url_for('booking.my_bookings'))
+
+
+# ─── Kö ───────────────────────────────────────────────────────────────────────
+
+@bp.route('/ko/<offer_id>', methods=['POST'])
+@login_required
+def join_queue(offer_id):
+    uid   = session['user_id']
+    offer = db.get_one('offers', {'id': offer_id})
+    if not offer:
+        flash('Erbjudandet hittades inte.', 'error')
+        return redirect(url_for('public.index'))
+
+    # Redan i kön?
+    existing = db.get_one('queues', {'offer_id': offer_id, 'customer_id': uid, 'status': 'waiting'})
+    if existing:
+        flash('Du står redan i kön.', 'info')
+        return redirect(url_for('public.offer_detail', offer_id=offer_id))
+
+    db.insert('queues', {
+        'offer_id':    offer_id,
+        'customer_id': uid,
+        'status':      'waiting',
+    })
+    flash('Du är nu i kön! Vi meddelar dig via mail/SMS om en plats öppnas.', 'success')
+    return redirect(url_for('public.offer_detail', offer_id=offer_id))
+
+
+def _activate_next_in_queue(offer_id):
+    """Hämtar nästa i kön, skickar notis och ger dem 2 timmar att boka."""
+    next_q = db.select('queues', {'offer_id': offer_id, 'status': 'waiting'},
+                       order='created_at.asc', limit=1)
+    if not next_q:
+        return
+    q        = next_q[0]
+    customer = db.get_one('customers', {'id': q['customer_id']}, 'email,full_name,phone')
+    offer    = db.get_one('offers', {'id': offer_id}, 'title,deal_price')
+    if not customer or not offer:
+        return
+
+    db.update('queues', {'id': q['id']}, {
+        'status':      'notified',
+        'notified_at': datetime.now(timezone.utc).isoformat(),
+    })
+
+    base    = os.environ.get('BASE_URL', 'http://localhost:5000')
+    name    = _html.escape(customer.get('full_name') or 'där')
+    price   = fmt_price(offer.get('deal_price'))
+    url     = f"{base}/erbjudande/{offer_id}"
+    o_title = _html.escape(offer.get('title', '') if offer else '')
+
+    body = f"""<div style="font-family:sans-serif;max-width:520px;margin:0 auto;background:#0f0e0c;color:#f7f5f0;border-radius:12px;overflow:hidden">
+  <div style="background:#d4541a;padding:14px 24px;font-size:11px;letter-spacing:2px;text-transform:uppercase;font-weight:600">
+    ⚡ FlashDeal &middot; Din plats i kön är nu ledig!
+  </div>
+  <div style="padding:28px">
+    <h2 style="font-size:20px;margin:0 0 10px">Hej {name}!</h2>
+    <p style="color:#b0a898;font-size:14px;margin:0 0 20px">
+      En plats har öppnats upp för <strong style="color:#f7f5f0">{o_title}</strong>.
+      Du har <strong style="color:#febc2e">2 timmar</strong> på dig att boka.
+    </p>
+    <a href="{url}" style="display:block;background:#d4541a;color:#fff;text-align:center;padding:14px;border-radius:8px;text-decoration:none;font-weight:700;font-size:15px">
+      Boka nu — {price} kr &rarr;
+    </a>
+    <p style="font-size:12px;color:#5a5650;text-align:center;margin-top:14px">
+      Erbjudandet kan gå till nästa i kön om du inte bokar inom 2 timmar.
+    </p>
+  </div>
+</div>"""
+    send_email(customer['email'], f'⚡ Din tur! {offer.get("title", "") if offer else ""} väntar på dig', body)
+
+    from api.config import send_sms
+    if customer.get('phone'):
+        send_sms(customer['phone'],
+                 f"⚡ FlashDeal: Din plats är ledig! {offer['title']} – {price} kr. "
+                 f"Boka inom 2h: {url}")
+
+
 # ─── Hjälpfunktioner ──────────────────────────────────────────────────────────
 
 def _send_booking_confirmation(booking, offer, store):
@@ -243,12 +397,15 @@ def _send_booking_confirmation(booking, offer, store):
         return
 
     base    = os.environ.get('BASE_URL', 'http://localhost:5000')
-    name    = customer.get('full_name') or 'där'
+    name    = _html.escape(customer.get('full_name') or 'där')
     expires = (booking.get('expires_at') or '')[:16].replace('T', ' kl ')
     price   = fmt_price(booking.get('total_paid'))
     qr_url  = f"{base}/betala/bekraftelse/{booking['id']}"
+    o_title = _html.escape(offer.get('title', '') if offer else '')
+    s_name  = _html.escape(store.get('business_name', '') if store else '')
+    s_city  = _html.escape(store.get('city', '') if store else '')
 
-    html = f"""<div style="font-family:sans-serif;max-width:520px;margin:0 auto;background:#0f0e0c;color:#f7f5f0;border-radius:12px;overflow:hidden">
+    body = f"""<div style="font-family:sans-serif;max-width:520px;margin:0 auto;background:#0f0e0c;color:#f7f5f0;border-radius:12px;overflow:hidden">
   <div style="background:#1a9a6c;padding:14px 24px;font-size:11px;letter-spacing:2px;text-transform:uppercase;font-weight:600">
     ✅ FlashDeal &middot; Bokningsbekräftelse
   </div>
@@ -256,8 +413,8 @@ def _send_booking_confirmation(booking, offer, store):
     <h2 style="font-size:20px;margin:0 0 8px;color:#f7f5f0">Hej {name}!</h2>
     <p style="color:#b0a898;font-size:14px;margin:0 0 20px">Din bokning är bekräftad och betalning mottagen.</p>
     <div style="background:#1a1814;border:1px solid #2a2824;border-radius:10px;padding:18px;margin-bottom:20px">
-      <div style="font-size:18px;font-weight:700;color:#f7f5f0;margin-bottom:4px">{offer.get('title','')}</div>
-      <div style="color:#7a7570;font-size:13px">{store.get('business_name','') if store else ''} &middot; {store.get('city','') if store else ''}</div>
+      <div style="font-size:18px;font-weight:700;color:#f7f5f0;margin-bottom:4px">{o_title}</div>
+      <div style="color:#7a7570;font-size:13px">{s_name} &middot; {s_city}</div>
       <div style="margin-top:12px;font-size:24px;font-weight:700;color:#d4541a">{price} kr</div>
     </div>
     <div style="background:#0d3020;border:1px solid #1a5030;border-radius:8px;padding:12px 16px;margin-bottom:20px;font-size:13px;color:#4ade80">
@@ -268,4 +425,4 @@ def _send_booking_confirmation(booking, offer, store):
     </a>
   </div>
 </div>"""
-    send_email(customer['email'], f'✅ Bokningsbekräftelse — {offer.get("title","")}', html)
+    send_email(customer['email'], f'✅ Bokningsbekräftelse — {offer.get("title", "") if offer else ""}', body)

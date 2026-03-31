@@ -2,7 +2,7 @@
 config.py — Delade hjälpfunktioner och tjänster
 SupabaseREST · Mail (Gmail OAuth/SMTP) · SMS (46elks) · QR · Bilduppladdning · Notiser
 """
-import os, json, base64, io, secrets
+import os, json, base64, io, secrets, html as _html
 import requests
 from datetime import datetime, timedelta, timezone
 from functools import wraps
@@ -75,7 +75,13 @@ class SupabaseREST:
         if not self.url:
             from api.demo_data import demo_update
             return demo_update(table, filters, data)
-        params = {k: f'eq.{v}' for k, v in filters.items()}
+        params = {}
+        for k, v in filters.items():
+            if isinstance(v, dict):
+                op, val = next(iter(v.items()))
+                params[k] = f'{op}.{val}'
+            else:
+                params[k] = f'eq.{v}'
         try:
             r = requests.patch(self._ep(table), headers=self._h(), params=params, json=data, timeout=10)
         except Exception as e:
@@ -98,8 +104,19 @@ class SupabaseREST:
             print(f'[DB delete error] {table}: {e}'); return False
 
     def rpc(self, fn, params=None):
-        r = requests.post(f'{self.url}/rest/v1/rpc/{fn}', headers=self._h(), json=params or {}, timeout=10)
-        return r.json() if r.ok else None
+        if not self.url:
+            return None
+        try:
+            r = requests.post(
+                f'{self.url}/rest/v1/rpc/{fn}',
+                headers=self._h(),
+                json=params or {},
+                timeout=10,
+            )
+            return r.json() if r.ok else None
+        except Exception as e:
+            print(f'[DB rpc error] {fn}: {e}')
+            return None
 
 
 db = SupabaseREST()
@@ -314,9 +331,16 @@ def _offer_email_html(offer, store, category):
     price    = fmt_price(offer.get('deal_price'))
     orig     = fmt_price(offer.get('original_price'))
     expires  = (offer.get('expires_at') or '')[:16].replace('T', ' kl ')
+    # Escape all user-controlled strings before embedding in HTML
+    s_name   = _html.escape(store.get('business_name', ''))
+    s_city   = _html.escape(store.get('city', ''))
+    o_title  = _html.escape(offer.get('title', ''))
+    o_desc   = _html.escape(offer.get('description', '') or '')
+    c_name   = _html.escape(category.get('name', 'Erbjudande'))
+    c_icon   = _html.escape(category.get('icon', ''))
     img_html = ''
     if offer.get('photo_url'):
-        img_html = f'<img src="{offer["photo_url"]}" style="width:100%;max-height:220px;object-fit:cover;border-radius:8px;margin-bottom:18px">'
+        img_html = f'<img src="{_html.escape(offer["photo_url"])}" style="width:100%;max-height:220px;object-fit:cover;border-radius:8px;margin-bottom:18px">'
     discount = ''
     if offer.get('original_price') and offer.get('deal_price'):
         try:
@@ -327,13 +351,13 @@ def _offer_email_html(offer, store, category):
 
     return f"""<div style="font-family:'Segoe UI',sans-serif;max-width:520px;margin:0 auto;background:#0f0e0c;color:#f7f5f0;border-radius:12px;overflow:hidden">
   <div style="background:#d4541a;padding:14px 24px;font-size:11px;letter-spacing:3px;text-transform:uppercase;font-weight:600">
-    ⚡ FlashDeal &middot; {category.get('icon','')} {category.get('name','Erbjudande')}
+    ⚡ FlashDeal &middot; {c_icon} {c_name}
   </div>
   <div style="padding:28px 28px 20px">
     {img_html}
-    <div style="font-size:12px;color:#7a7570;margin-bottom:6px">{store.get('business_name','')} &middot; {store.get('city','')}</div>
-    <h2 style="font-size:22px;margin:0 0 10px;color:#f7f5f0;line-height:1.3">{offer.get('title','')}</h2>
-    <p style="color:#b0a898;font-size:14px;margin:0 0 18px;line-height:1.6">{offer.get('description','')}</p>
+    <div style="font-size:12px;color:#7a7570;margin-bottom:6px">{s_name} &middot; {s_city}</div>
+    <h2 style="font-size:22px;margin:0 0 10px;color:#f7f5f0;line-height:1.3">{o_title}</h2>
+    <p style="color:#b0a898;font-size:14px;margin:0 0 18px;line-height:1.6">{o_desc}</p>
     <div style="margin-bottom:18px">
       <span style="font-size:30px;font-weight:700;color:#d4541a">{price} kr</span>{discount}
       <span style="font-size:13px;color:#5a5650;text-decoration:line-through;margin-left:10px">{orig} kr</span>
@@ -341,12 +365,12 @@ def _offer_email_html(offer, store, category):
     <div style="background:#1a1814;border:1px solid #2a2824;border-radius:8px;padding:12px 16px;margin-bottom:22px;font-size:13px;color:#febc2e">
       ⏱ Gäller till: {expires}
     </div>
-    <a href="{base}/erbjudande/{offer.get('id','')}"
+    <a href="{base}/erbjudande/{_html.escape(str(offer.get('id','')))}",
        style="display:block;background:#d4541a;color:#fff;text-align:center;padding:15px;border-radius:8px;text-decoration:none;font-weight:700;font-size:16px">
       Boka nu &rarr;
     </a>
   </div>
   <div style="padding:14px 24px;border-top:1px solid #1e1c18;font-size:11px;color:#5a5650;text-align:center">
-    Du får detta för att du prenumererar på {category.get('name','')}-erbjudanden.
+    Du får detta för att du prenumererar på {c_name}-erbjudanden.
   </div>
 </div>"""

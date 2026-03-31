@@ -3,7 +3,7 @@ admin.py — Plattformsadmin: godkänn butiker, se aktivitet
 Prefix: /admin
 Skyddad med PIN från .env (ADMIN_PIN)
 """
-import os
+import os, html as _html
 from flask import Blueprint, render_template, request, redirect, url_for, session, flash
 from api.config import db, admin_required, send_email
 
@@ -136,10 +136,10 @@ def reject_store(store_id):
 
 def _send_store_status_email(store, status, note=''):
     base = os.environ.get('BASE_URL', 'http://localhost:5000')
-    name = store.get('business_name', 'Butik')
+    name = _html.escape(store.get('business_name', 'Butik'))
     if status == 'approved':
-        subject = f'✅ Välkommen till FlashDeal — {name}!'
-        html = f"""<div style="font-family:sans-serif;max-width:500px;margin:0 auto;background:#0f0e0c;color:#f7f5f0;border-radius:12px;overflow:hidden">
+        subject = f'✅ Välkommen till FlashDeal — {store.get("business_name", "")}'
+        body = f"""<div style="font-family:sans-serif;max-width:500px;margin:0 auto;background:#0f0e0c;color:#f7f5f0;border-radius:12px;overflow:hidden">
   <div style="background:#1a9a6c;padding:14px 24px;font-size:11px;letter-spacing:2px;text-transform:uppercase">✅ Ansökan godkänd</div>
   <div style="padding:28px">
     <h2 style="font-size:22px;margin:0 0 12px">Välkommen, {name}!</h2>
@@ -148,9 +148,9 @@ def _send_store_status_email(store, status, note=''):
   </div>
 </div>"""
     else:
-        subject = f'FlashDeal — Uppdatering om er ansökan'
-        note_html = f'<p style="color:#b0a898;font-size:14px">Anledning: {note}</p>' if note else ''
-        html = f"""<div style="font-family:sans-serif;max-width:500px;margin:0 auto;background:#0f0e0c;color:#f7f5f0;border-radius:12px;overflow:hidden">
+        subject = 'FlashDeal — Uppdatering om er ansökan'
+        note_html = f'<p style="color:#b0a898;font-size:14px">Anledning: {_html.escape(note)}</p>' if note else ''
+        body = f"""<div style="font-family:sans-serif;max-width:500px;margin:0 auto;background:#0f0e0c;color:#f7f5f0;border-radius:12px;overflow:hidden">
   <div style="background:#c84040;padding:14px 24px;font-size:11px;letter-spacing:2px;text-transform:uppercase">Ansökan ej godkänd</div>
   <div style="padding:28px">
     <h2 style="font-size:20px;margin:0 0 12px">Hej {name}</h2>
@@ -160,4 +160,4 @@ def _send_store_status_email(store, status, note=''):
   </div>
 </div>"""
 
-    send_email(store['email'], subject, html)
+    send_email(store['email'], subject, body)

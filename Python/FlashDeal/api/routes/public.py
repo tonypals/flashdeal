@@ -44,7 +44,7 @@ def index():
 @bp.route('/erbjudande/<offer_id>')
 def offer_detail(offer_id):
     offer = db.get_one('offers', {'id': offer_id})
-    if not offer or offer.get('status') not in ('active', 'draft'):
+    if not offer or offer.get('status') != 'active':
         return render_template('404.html'), 404
 
     store    = db.get_one('stores', {'id': offer['store_id']},
@@ -55,11 +55,19 @@ def offer_detail(offer_id):
     bookings = db.select('bookings', {'offer_id': offer_id, 'payment_status': 'paid'})
     booked_qty = sum(b.get('quantity', 1) for b in bookings)
 
+    # Kolla om inloggad kund står i kön
+    in_queue = False
+    uid = session.get('user_id')
+    if uid:
+        q = db.get_one('queues', {'offer_id': offer_id, 'customer_id': uid})
+        in_queue = bool(q and q.get('status') in ('waiting', 'notified'))
+
     return render_template('offer_detail.html',
                            offer=offer,
                            store=store,
                            category=category,
-                           booked_qty=booked_qty)
+                           booked_qty=booked_qty,
+                           in_queue=in_queue)
 
 
 @bp.route('/butiker')

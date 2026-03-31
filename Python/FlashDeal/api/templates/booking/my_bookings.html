@@ -48,10 +48,21 @@
               </div>
             </div>
             {% if b.payment_status == 'paid' and b.status == 'confirmed' and not b.qr_used %}
-              <a href="{{ url_for('booking.confirmation', booking_id=b.id) }}"
-                 class="btn btn-primary btn-sm">
-                Visa QR →
-              </a>
+              <div style="display:flex;flex-direction:column;gap:8px;align-items:flex-end">
+                <a href="{{ url_for('booking.confirmation', booking_id=b.id) }}"
+                   class="btn btn-primary btn-sm">
+                  Visa QR →
+                </a>
+                {% if not b.qr_used %}
+                  <form method="POST" action="{{ url_for('booking.cancel', booking_id=b.id) }}"
+                        onsubmit="return confirm('Avboka köpet? Du får återbetalning om det är innan hämtningstiden.')">
+                    <button type="submit" class="btn btn-sm"
+                            style="background:transparent;border:1px solid var(--red);color:var(--red);font-size:12px">
+                      Avboka
+                    </button>
+                  </form>
+                {% endif %}
+              </div>
             {% endif %}
           </div>
         </div>
