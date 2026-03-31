@@ -1,0 +1,326 @@
+{% extends "base_light.html" %}
+{% block title %}Nytt erbjudande — FlashDeal{% endblock %}
+
+{% block extra_head %}
+<style>
+.offer-preview-card {
+  background: #1a1814;
+  border: 1px solid #2a2824;
+  border-radius: 14px;
+  overflow: hidden;
+  color: #f7f5f0;
+  max-width: 280px;
+  font-family: 'DM Sans', sans-serif;
+}
+.prev-img { height: 160px; background: #0f0e0c; display:flex;align-items:center;justify-content:center;font-size:48px;overflow:hidden; }
+.prev-img img { width:100%;height:100%;object-fit:cover;display:none }
+.prev-body { padding:14px; }
+.prev-store { font-size:10px;color:#5a5650;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px; }
+.prev-title { font-size:15px;font-weight:600;margin-bottom:8px; }
+.prev-price { font-size:22px;font-weight:700;color:#d4541a; }
+.prev-orig  { font-size:12px;color:#5a5650;text-decoration:line-through;margin-left:6px; }
+.prev-timer { font-size:12px;color:#febc2e;margin-top:8px; }
+.prev-window{ font-size:12px;color:#7a9e7a;margin-top:4px; }
+
+.quick-btn {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 12px;
+  cursor: pointer;
+  color: var(--text);
+  transition: border-color .15s, background .15s;
+  white-space: nowrap;
+}
+.quick-btn:hover { border-color: var(--accent); background: var(--card2); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div style="padding:28px;max-width:1000px">
+  <div style="margin-bottom:24px">
+    <a href="{{ url_for('store.dashboard') }}" style="color:var(--muted);font-size:13px">← Tillbaka till panel</a>
+    <h2 style="font-size:22px;font-weight:700;margin-top:8px">Nytt erbjudande</h2>
+    <p style="font-size:13px;color:var(--muted);margin-top:2px">Fyll i informationen. Prenumeranter notifieras direkt när du publicerar.</p>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 300px;gap:32px;align-items:start">
+
+    <!-- ── Formulär ── -->
+    <form method="POST" enctype="multipart/form-data">
+
+      <!-- Foto -->
+      <div class="form-group">
+        <label class="form-label">Foto på varan</label>
+        <div class="photo-upload-box" id="photo-upload-box">
+          <input type="file" name="photo" id="photo-input" accept="image/*" capture="environment">
+          <div id="photo-label">
+            <div style="font-size:36px;margin-bottom:8px">📷</div>
+            <div style="font-weight:600;color:var(--muted2)">Ta foto eller välj bild</div>
+            <div style="font-size:12px;color:var(--muted);margin-top:4px">Tryck för att öppna kameran · Max 5 MB</div>
+          </div>
+          <img id="photo-preview" class="photo-preview" src="" alt="Förhandsvisning">
+        </div>
+      </div>
+
+      <!-- Titel -->
+      <div class="form-group">
+        <label class="form-label" for="title">Titel på erbjudandet *</label>
+        <input type="text" name="title" id="title" class="form-control"
+               placeholder="t.ex. Nybakat surdegsbröd — 3 limpor kvar"
+               maxlength="120" required>
+      </div>
+
+      <!-- Beskrivning -->
+      <div class="form-group">
+        <label class="form-label" for="description">Beskrivning</label>
+        <textarea name="description" id="description" class="form-control" rows="3"
+                  placeholder="Berätta mer — vad är det, varför säljer ni det, skick etc."></textarea>
+      </div>
+
+      <!-- Priser -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+        <div class="form-group">
+          <label class="form-label" for="original_price">Ordinariepris (kr)</label>
+          <input type="number" name="original_price" id="original_price" class="form-control"
+                 placeholder="t.ex. 299" min="0" step="1">
+          <div class="form-hint">Visas överkryssat på kortet</div>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="deal_price">Erbjudandepris (kr) *</label>
+          <input type="number" name="deal_price" id="deal_price" class="form-control"
+                 placeholder="t.ex. 99" min="1" step="1" required>
+        </div>
+      </div>
+
+      <!-- Antal och kategori -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+        <div class="form-group">
+          <label class="form-label" for="quantity">Antal tillgängliga *</label>
+          <input type="number" name="quantity" id="quantity" class="form-control"
+                 value="1" min="1" max="99" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="category_id">Kategori</label>
+          <select name="category_id" id="category_id" class="form-control">
+            <option value="">— Välj kategori —</option>
+            {% for cat in categories %}
+              <option value="{{ cat.id }}">{{ cat.icon }} {{ cat.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+
+      <!-- ── Giltighetstid ── -->
+      <div class="form-group" style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px;margin-bottom:4px">
+        <label class="form-label" style="margin-bottom:10px">Erbjudandet gäller till *</label>
+
+        <!-- Snabbknappar -->
+        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px">
+          <button type="button" class="quick-btn" onclick="setQuick(1)">Om 1 h</button>
+          <button type="button" class="quick-btn" onclick="setQuick(2)">Om 2 h</button>
+          <button type="button" class="quick-btn" onclick="setQuick(3)">Om 3 h</button>
+          <button type="button" class="quick-btn" onclick="setQuick(6)">Om 6 h</button>
+          <button type="button" class="quick-btn" onclick="setToday(17, 0)">Idag kl 17:00</button>
+          <button type="button" class="quick-btn" onclick="setToday(18, 0)">Idag kl 18:00</button>
+          <button type="button" class="quick-btn" onclick="setTomorrow(12, 0)">Imorgon kl 12:00</button>
+          <button type="button" class="quick-btn" onclick="setQuick(48)">Om 2 dagar</button>
+        </div>
+
+        <!-- Exakt datum + tid -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div>
+            <label style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px">Datum</label>
+            <input type="date" name="expires_date" id="expires_date" class="form-control"
+                   required oninput="updatePreview()">
+          </div>
+          <div>
+            <label style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px">Klockslag</label>
+            <input type="time" name="expires_time" id="expires_time" class="form-control"
+                   value="17:00" required oninput="updatePreview()">
+          </div>
+        </div>
+        <div style="font-size:12px;color:var(--muted);margin-top:8px">
+          Utgår: <strong id="preview-expires">—</strong>
+        </div>
+      </div>
+
+      <!-- ── Hämtningsfönster (frivilligt) ── -->
+      <div class="form-group" style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px;margin-top:12px">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+          <label class="form-label" style="margin:0">Hämtningsfönster</label>
+          <span style="font-size:11px;color:var(--muted);background:var(--card2);border-radius:20px;padding:2px 10px">frivilligt</span>
+        </div>
+        <p style="font-size:12px;color:var(--muted);margin:0 0 12px">
+          Ange om kunden måste hämta inom en specifik tid — t.ex. bageri som stänger 17:00.
+          Lämna tomt om det inte gäller.
+        </p>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div>
+            <label style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px">Hämta från</label>
+            <input type="time" name="pickup_from" id="pickup_from" class="form-control"
+                   placeholder="t.ex. 14:30" oninput="updatePreview()">
+          </div>
+          <div>
+            <label style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px">Hämta senast</label>
+            <input type="time" name="pickup_to" id="pickup_to" class="form-control"
+                   placeholder="t.ex. 17:00" oninput="updatePreview()">
+          </div>
+        </div>
+        <div style="font-size:12px;color:var(--muted);margin-top:8px" id="pickup-hint" style="display:none"></div>
+      </div>
+
+      <!-- Knappar -->
+      <div class="form-actions" style="margin-top:20px">
+        <button type="submit" name="publish" value="1" class="btn btn-primary btn-lg">
+          ⚡ Publicera nu
+        </button>
+        <button type="submit" class="btn btn-secondary btn-lg">
+          Spara som utkast
+        </button>
+        <a href="{{ url_for('store.dashboard') }}" class="btn btn-secondary btn-lg">Avbryt</a>
+      </div>
+      <p style="font-size:12px;color:var(--muted);margin-top:12px">
+        Vid publicering skickas notiser direkt till prenumeranter i vald kategori.
+      </p>
+    </form>
+
+    <!-- ── Förhandsvisning ── -->
+    <div style="position:sticky;top:80px">
+      <div style="font-size:12px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:12px">
+        Förhandsvisning
+      </div>
+      <div class="offer-preview-card">
+        <div class="prev-img" id="prev-img-wrap">
+          📦
+          <img id="prev-img" src="" alt="">
+        </div>
+        <div class="prev-body">
+          <div class="prev-store">{{ session.get('store_name','Din butik') }}</div>
+          <div class="prev-title" id="preview-title">Titel på erbjudandet</div>
+          <div>
+            <span class="prev-price" id="preview-price">— kr</span>
+            <span class="prev-orig"  id="preview-orig"></span>
+          </div>
+          <div class="prev-timer">⏱ Gäller till: <span id="preview-expires-card">—</span></div>
+          <div class="prev-window" id="preview-window-card" style="display:none">🕐 Hämta: <span id="preview-window-text">—</span></div>
+          <div style="font-size:12px;color:#7a7570;margin-top:6px"><span id="preview-qty">1</span> st tillgängliga</div>
+        </div>
+      </div>
+      <p style="font-size:12px;color:var(--muted);margin-top:12px;text-align:center">
+        Så här ser kortet ut för kunder
+      </p>
+    </div>
+
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/camera.js') }}"></script>
+<script>
+// Sätt standarddatum till idag
+(function() {
+  var d = new Date();
+  var pad = n => String(n).padStart(2,'0');
+  var today = d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate());
+  document.getElementById('expires_date').value = today;
+  document.getElementById('expires_date').min   = today;
+  updatePreview();
+})();
+
+function setQuick(hours) {
+  var d = new Date();
+  d.setTime(d.getTime() + hours * 3600000);
+  setDateTimeInputs(d);
+}
+function setToday(h, m) {
+  var d = new Date();
+  d.setHours(h, m, 0, 0);
+  if (d < new Date()) d.setDate(d.getDate() + 1); // redan passerat — sätt imorgon
+  setDateTimeInputs(d);
+}
+function setTomorrow(h, m) {
+  var d = new Date();
+  d.setDate(d.getDate() + 1);
+  d.setHours(h, m, 0, 0);
+  setDateTimeInputs(d);
+}
+function setDateTimeInputs(d) {
+  var pad = n => String(n).padStart(2,'0');
+  document.getElementById('expires_date').value = d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate());
+  document.getElementById('expires_time').value = pad(d.getHours()) + ':' + pad(d.getMinutes());
+  updatePreview();
+}
+
+function updatePreview() {
+  var dateVal = document.getElementById('expires_date').value;
+  var timeVal = document.getElementById('expires_time').value;
+  if (dateVal && timeVal) {
+    var dt = new Date(dateVal + 'T' + timeVal);
+    var today = new Date(); today.setHours(0,0,0,0);
+    var dtDay = new Date(dateVal); dtDay.setHours(0,0,0,0);
+    var dayLabel = dtDay.getTime() === today.getTime() ? 'idag' :
+                   dtDay.getTime() === today.getTime() + 86400000 ? 'imorgon' :
+                   dt.toLocaleDateString('sv-SE', {weekday:'short', day:'numeric', month:'short'});
+    var timeStr = dt.toLocaleTimeString('sv-SE', {hour:'2-digit', minute:'2-digit'});
+    var label = dayLabel + ' kl ' + timeStr;
+    document.getElementById('preview-expires').textContent      = label;
+    document.getElementById('preview-expires-card').textContent = label;
+  }
+
+  // Hämtningsfönster
+  var pFrom = document.getElementById('pickup_from').value;
+  var pTo   = document.getElementById('pickup_to').value;
+  var hint  = document.getElementById('pickup-hint');
+  var wCard = document.getElementById('preview-window-card');
+  var wText = document.getElementById('preview-window-text');
+  if (pFrom || pTo) {
+    var txt = (pFrom && pTo) ? pFrom + '–' + pTo :
+              pFrom ? 'från ' + pFrom :
+              'senast ' + pTo;
+    hint.textContent = 'Kunden ser: "Hämta ' + txt + '"';
+    wCard.style.display = 'block';
+    wText.textContent   = txt;
+  } else {
+    hint.textContent    = '';
+    wCard.style.display = 'none';
+  }
+
+  // Titel
+  var t = document.getElementById('title').value;
+  document.getElementById('preview-title').textContent = t || 'Titel på erbjudandet';
+
+  // Pris
+  var p = document.getElementById('deal_price').value;
+  document.getElementById('preview-price').textContent = p ? p + ' kr' : '— kr';
+  var o = document.getElementById('original_price').value;
+  document.getElementById('preview-orig').textContent = o ? o + ' kr' : '';
+
+  // Antal
+  var q = document.getElementById('quantity').value;
+  document.getElementById('preview-qty').textContent = q || '1';
+}
+
+// Live-uppdatera förhandsvisning
+['title','deal_price','original_price','quantity'].forEach(function(id) {
+  document.getElementById(id).addEventListener('input', updatePreview);
+});
+
+// Foto-preview
+document.getElementById('photo-input').addEventListener('change', function() {
+  var file = this.files[0];
+  if (file) {
+    var reader = new FileReader();
+    reader.onload = function(e) {
+      var img = document.getElementById('prev-img');
+      img.src = e.target.result;
+      img.style.display = 'block';
+      document.getElementById('prev-img-wrap').style.fontSize = '0';
+    };
+    reader.readAsDataURL(file);
+  }
+});
+</script>
+{% endblock %}

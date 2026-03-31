@@ -1,0 +1,31 @@
+{% extends "base_light.html" %}
+{% block title %}Ansökan mottagen — FlashDeal{% endblock %}
+
+{% block content %}
+<div style="max-width:520px;margin:80px auto;padding:0 24px;text-align:center">
+  {% if status == 'rejected' %}
+    <div style="font-size:52px;margin-bottom:20px">❌</div>
+    <h2 style="font-size:24px;font-weight:700;margin-bottom:12px">Ansökan ej godkänd</h2>
+    <p style="color:var(--muted);font-size:15px;line-height:1.7;margin-bottom:24px">
+      Vi kunde tyvärr inte godkänna er ansökan just nu. Kontakta oss för mer information.
+    </p>
+  {% else %}
+    <div style="font-size:52px;margin-bottom:20px">⏳</div>
+    <h2 style="font-size:24px;font-weight:700;margin-bottom:12px">Ansökan mottagen!</h2>
+    <p style="color:var(--muted);font-size:15px;line-height:1.7;margin-bottom:24px">
+      Tack för att ni registrerat er på FlashDeal. Vi granskar er ansökan och
+      återkommer med besked via e-post — normalt inom 1–2 arbetsdagar.
+    </p>
+    <div style="background:#fff8eb;border:1px solid #f0d060;border-radius:12px;padding:20px;text-align:left;margin-bottom:28px">
+      <div style="font-weight:600;color:var(--yellow);margin-bottom:8px;font-size:14px">Vad händer sen?</div>
+      <ul style="list-style:none;display:flex;flex-direction:column;gap:8px">
+        <li style="font-size:13px;color:var(--muted2);display:flex;gap:10px"><span>1.</span> Vi granskar er profil och er butik</li>
+        <li style="font-size:13px;color:var(--muted2);display:flex;gap:10px"><span>2.</span> Ni får ett mail med besked om godkännande</li>
+        <li style="font-size:13px;color:var(--muted2);display:flex;gap:10px"><span>3.</span> Koppla ert bankkonto via Stripe (tar 10 min)</li>
+        <li style="font-size:13px;color:var(--muted2);display:flex;gap:10px"><span>4.</span> Publicera ert första erbjudande!</li>
+      </ul>
+    </div>
+  {% endif %}
+  <a href="{{ url_for('auth.logout') }}" class="btn btn-secondary">Logga ut</a>
+</div>
+{% endblock %}

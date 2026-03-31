@@ -1,0 +1,77 @@
+{% extends "base_light.html" %}
+{% block title %}Bokningar — FlashDeal{% endblock %}
+
+{% block content %}
+<div style="padding:28px">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px">
+    <div>
+      <h2 style="font-size:20px;font-weight:700">Bokningar</h2>
+      <p style="font-size:13px;color:var(--muted);margin-top:2px">{{ bookings|length }} bokningar totalt</p>
+    </div>
+    <a href="{{ url_for('store.scanner') }}" class="btn btn-primary">📷 Skanna QR</a>
+  </div>
+
+  {% if bookings %}
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden">
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Erbjudande</th>
+              <th>Kund</th>
+              <th>Belopp</th>
+              <th>Status</th>
+              <th>Betalning</th>
+              <th>Datum</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for b in bookings %}
+              <tr>
+                <td style="font-weight:500;color:var(--text)">
+                  {{ b.offer.get('title', '—') }}<br>
+                  <span style="font-size:11px;color:var(--muted)">{{ b.quantity }} st</span>
+                </td>
+                <td>
+                  <div style="font-size:13px;color:var(--text)">{{ b.customer.get('full_name') or b.customer.get('email','—') }}</div>
+                  {% if b.customer.get('phone') %}
+                    <div style="font-size:11px;color:var(--muted)">{{ b.customer.phone }}</div>
+                  {% endif %}
+                </td>
+                <td style="font-weight:600;color:var(--accent)">{{ b.total_paid | price }} kr</td>
+                <td>
+                  {% if b.status == 'picked_up' %}
+                    <span class="badge badge-green">✓ Hämtad</span>
+                  {% elif b.status == 'confirmed' %}
+                    <span class="badge badge-orange">Väntar</span>
+                  {% elif b.status == 'cancelled' %}
+                    <span class="badge badge-red">Avbruten</span>
+                  {% endif %}
+                </td>
+                <td>
+                  {% if b.payment_status == 'paid' %}
+                    <span class="badge badge-green">Betald</span>
+                  {% elif b.payment_status == 'pending' %}
+                    <span class="badge badge-yellow">Pending</span>
+                  {% else %}
+                    <span class="badge badge-gray">{{ b.payment_status }}</span>
+                  {% endif %}
+                </td>
+                <td style="font-size:12px;color:var(--muted)">
+                  {{ (b.created_at or '')[:16].replace('T', ' ') }}
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  {% else %}
+    <div style="text-align:center;padding:60px 20px;color:var(--muted);border:1px dashed var(--border);border-radius:12px">
+      <div style="font-size:40px;margin-bottom:12px">📭</div>
+      <div style="font-weight:600">Inga bokningar ännu</div>
+      <div style="font-size:13px;margin-top:6px">Bokningar visas här när kunder bokar era erbjudanden.</div>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

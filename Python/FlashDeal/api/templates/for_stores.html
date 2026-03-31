@@ -1,0 +1,97 @@
+{% extends "base_dark.html" %}
+{% block title %}För butiker — FlashDeal{% endblock %}
+
+{% block content %}
+<div class="container" style="padding-top:60px;padding-bottom:80px;max-width:780px">
+
+  <!-- Hero -->
+  <div style="text-align:center;margin-bottom:60px">
+    <div style="display:inline-block;background:linear-gradient(135deg,#2a1000,#3d1a00);border:1px solid #c85000;border-radius:12px;padding:8px 20px;font-size:12px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#ff7b2c;margin-bottom:20px">
+      ⚡ För butiker
+    </div>
+    <h1 style="font-size:clamp(28px,5vw,44px);font-weight:900;line-height:1.15;color:var(--text);margin-bottom:20px;letter-spacing:-1px">
+      Folk köper allt på nätet.<br>
+      <span style="color:#ff7b2c">Ditt lager betalar priset.</span><br>
+      Vi fixar det.
+    </h1>
+    <p style="font-size:17px;color:var(--muted);max-width:580px;margin-inline:auto;line-height:1.7">
+      Halvfulla hyllor. Utgångna kampanjer. Saker som aldrig såldes fast de borde ha gjort det.
+      FlashDeal hjälper fysiska butiker att sälja överlager, lediga tider och glömda varor —
+      direkt till kunder som <em>hämtar på plats</em>.
+    </p>
+  </div>
+
+  <!-- Manifesto-sektion -->
+  <div style="background:linear-gradient(135deg,#1a0800,#2a1200);border:1px solid #5a2800;border-radius:20px;padding:40px 44px;margin-bottom:52px">
+    <div style="font-size:13px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:#ff7b2c;margin-bottom:20px">Varför FlashDeal finns</div>
+    <p style="font-size:16px;color:var(--text);line-height:1.85;margin:0 0 16px">
+      E-handeln har gjort livet bekvämt. Klicka, betala, få det hemskickat. Ingen ansträngning, inga överraskningar, inga mänskliga möten. Smidigt. Tomt.
+    </p>
+    <p style="font-size:16px;color:var(--text);line-height:1.85;margin:0 0 16px">
+      Medan folk sitter i soffan och bläddrar på skärmen skräpar det upp i källare, lagerlokaler och butikshyllor runt om i Sverige. Bra saker, till bra pris, som ingen vet om.
+    </p>
+    <p style="font-size:16px;color:var(--text);line-height:1.85;margin:0">
+      <strong style="color:#ff7b2c">FlashDeal gör det enkelt att vara snabb.</strong> Vi hjälpas åt att tömma lager, få upp folk ur sofforna och sätta liv i städer igen. Du säljer. Kunden hämtar. Alla vinner.
+    </p>
+  </div>
+
+  <!-- USP: Kom först — betala minst -->
+  <div style="text-align:center;margin-bottom:52px;padding:0 20px">
+    <div style="font-size:11px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:var(--muted);margin-bottom:12px">Vår grej</div>
+    <div style="font-size:clamp(24px,4vw,38px);font-weight:900;color:var(--text);letter-spacing:-1px;line-height:1.2;margin-bottom:12px">
+      Kom först — betala minst.
+    </div>
+    <p style="font-size:15px;color:var(--muted);max-width:500px;margin-inline:auto;line-height:1.65">
+      De första som bokar ett erbjudande får alltid det bästa priset. Ju fler som hunnit boka, desto mer kostar det. Det skapar fart, spänning och — viktigast av allt — tomma hyllor.
+    </p>
+  </div>
+
+  <!-- Tre fördelar -->
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:20px;margin-bottom:52px">
+    {% for icon, h, b in [
+      ('💰','Ingen fast kostnad','Vi tar ~6% per affär. Inga månadskostnader, ingen startavgift. Om ingenting säljs kostar det ingenting.'),
+      ('📣','Nå rätt kunder','Dina erbjudanden skickas direkt till kunder som prenumererar på din kategori — inte till alla, utan till dem som vill ha just det du säljer.'),
+      ('✅','Säkra betalningar','Kunden betalar vid bokning. Du ser bokningarna i realtid. QR-kod verifierar upphämtning. Inga no-shows utan betalning.'),
+    ] %}
+      <div style="background:var(--ink2);border:1px solid var(--border);border-radius:14px;padding:28px">
+        <div style="font-size:36px;margin-bottom:14px">{{ icon }}</div>
+        <h3 style="font-size:16px;font-family:'DM Sans',sans-serif;font-weight:700;margin-bottom:8px">{{ h }}</h3>
+        <p style="font-size:13px;color:var(--muted);margin:0;line-height:1.65">{{ b }}</p>
+      </div>
+    {% endfor %}
+  </div>
+
+  <!-- Hur det fungerar -->
+  <div style="margin-bottom:52px">
+    <h2 style="font-size:22px;font-family:'DM Sans',sans-serif;font-weight:800;margin-bottom:28px">Kom igång på 10 minuter</h2>
+    {% for n, h, b in [
+      (1,'Registrera din butik','Fyll i butiksnamn, adress och kontaktuppgifter. Välj era kategorier — en butik kan ha flera. Skicka in — vi granskar och återkommer inom 1–2 dagar.'),
+      (2,'Koppla ditt bankkonto','Via Stripe Express — säkert, enkelt, tar 10 minuter. Ni får pengarna direkt till ert konto, vi tar vår andel automatiskt.'),
+      (3,'Lägg upp ditt första erbjudande','Ta ett foto med mobilkameran, fyll i pris och antal. Publicera — prenumeranter notifieras direkt.'),
+      (4,'Välkomna kunder in i butiken','Kunder bokar och betalar i förväg. Ni scannar deras QR-kod när de hämtar. Klart — och hyllan är tom.'),
+    ] %}
+      <div style="display:flex;gap:20px;margin-bottom:24px;align-items:flex-start">
+        <div style="width:38px;height:38px;min-width:38px;background:var(--accent);color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:15px">{{ n }}</div>
+        <div>
+          <div style="font-weight:700;font-size:15px;margin-bottom:5px">{{ h }}</div>
+          <p style="color:var(--muted);font-size:14px;margin:0;line-height:1.65">{{ b }}</p>
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+
+  <!-- CTA -->
+  <div style="background:linear-gradient(135deg,#1a0a02,#2a1208);border:1px solid #5a3010;border-radius:16px;padding:44px;text-align:center">
+    <div style="font-size:36px;margin-bottom:12px">🏪</div>
+    <h2 style="font-size:24px;font-family:'DM Sans',sans-serif;font-weight:800;margin-bottom:8px">Töm lagret. Fyll butiken med folk.</h2>
+    <p style="color:var(--muted);margin-bottom:28px;font-size:15px;max-width:420px;margin-inline:auto">Gratis att prova. Ingen bindningstid. Du bestämmer pris, antal och när det gäller.</p>
+    <a href="{{ url_for('auth.store_register') }}" class="btn btn-primary btn-lg" style="font-size:16px;padding:14px 36px">
+      Registrera butik gratis →
+    </a>
+    <div style="margin-top:16px;font-size:13px;color:var(--muted)">
+      ⚡ <strong style="color:#ff7b2c">Kom först — betala minst.</strong> Samma gäller dina kunder.
+    </div>
+  </div>
+
+</div>
+{% endblock %}

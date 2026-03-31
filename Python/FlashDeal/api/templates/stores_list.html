@@ -1,0 +1,88 @@
+{% extends "base_dark.html" %}
+{% block title %}Butiker — FlashDeal{% endblock %}
+
+{% block content %}
+<div class="container" style="padding-top:40px;padding-bottom:60px">
+
+  <!-- USP-banner -->
+  <div style="background:linear-gradient(135deg,#2a1000,#3d1a00);border:1px solid #c85000;border-radius:14px;padding:20px 28px;margin-bottom:36px;display:flex;align-items:center;gap:18px;flex-wrap:wrap">
+    <div style="font-size:32px">⚡</div>
+    <div>
+      <div style="font-size:18px;font-weight:800;color:#ff7b2c;letter-spacing:-0.3px">Kom först — betala minst.</div>
+      <div style="font-size:13px;color:var(--muted);margin-top:3px">Ju färre som hunnit boka, desto lägre pris. Snooze och du betalar mer.</div>
+    </div>
+  </div>
+
+  <h1 style="font-size:28px;margin-bottom:6px">Butiker på FlashDeal</h1>
+  <p style="color:var(--muted);margin-bottom:28px" id="store-count">{{ stores|length }} godkända butiker</p>
+
+  <!-- Filter -->
+  <form method="get" style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:32px">
+    <input name="stad" value="{{ active_city }}" placeholder="Filtrera på stad..."
+           style="background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:10px 14px;font-size:14px;flex:1;min-width:160px">
+    <select name="kategori"
+            style="background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:10px 14px;font-size:14px">
+      <option value="">Alla kategorier</option>
+      {% for cat in categories %}
+        <option value="{{ cat.slug }}" {% if active_cat == cat.slug %}selected{% endif %}>
+          {{ cat.icon }} {{ cat.name }}
+        </option>
+      {% endfor %}
+    </select>
+    <button type="submit" class="btn btn-primary">Filtrera</button>
+    {% if active_city or active_cat %}
+      <a href="{{ url_for('public.stores_list') }}" class="btn btn-ghost">Rensa</a>
+    {% endif %}
+  </form>
+
+  <!-- Godkända butiker (från backend/demo) -->
+  {% if stores %}
+    <div id="approved-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:20px;margin-bottom:32px">
+      {% for store in stores %}
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;transition:border-color .2s"
+             onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">
+          {% if store.logo_url %}
+            <img src="{{ store.logo_url }}" alt="{{ store.business_name }}"
+                 style="width:100%;height:120px;object-fit:cover">
+          {% else %}
+            <div style="height:80px;background:var(--card2);display:flex;align-items:center;justify-content:center;font-size:36px">
+              🏪
+            </div>
+          {% endif %}
+          <div style="padding:16px 18px">
+            <div style="font-size:12px;color:var(--muted);margin-bottom:4px">{{ store.city }}</div>
+            <div style="font-size:17px;font-weight:700;color:var(--text);margin-bottom:8px">{{ store.business_name }}</div>
+            {% if store.store_cats %}
+              <div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:10px">
+                {% for cat in store.store_cats %}
+                  <span style="font-size:11px;background:var(--card2);color:var(--muted2);border:1px solid var(--border);border-radius:20px;padding:3px 9px;white-space:nowrap">
+                    {{ cat.icon }} {{ cat.name }}
+                  </span>
+                {% endfor %}
+              </div>
+            {% endif %}
+            {% if store.description %}
+              <p style="font-size:13px;color:var(--muted);margin:0 0 12px;line-height:1.5;
+                        display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">
+                {{ store.description }}
+              </p>
+            {% endif %}
+            <a href="{{ url_for('public.index') }}?butik={{ store.id }}"
+               style="font-size:13px;color:var(--accent);text-decoration:none;font-weight:600">
+              Se erbjudanden →
+            </a>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div id="approved-grid"></div>
+    <div style="text-align:center;padding:60px 20px;color:var(--muted)" id="empty-state">
+      <div style="font-size:48px;margin-bottom:16px">🏪</div>
+      <p>Inga butiker hittades med dessa filter.</p>
+      <a href="{{ url_for('public.stores_list') }}" class="btn btn-ghost" style="margin-top:12px">Visa alla</a>
+    </div>
+  {% endif %}
+
+</div>
+{% endblock %}

@@ -1,0 +1,40 @@
+{% extends "base_dark.html" %}
+{% block title %}Hur det fungerar — FlashDeal{% endblock %}
+
+{% block content %}
+<div class="container" style="padding-top:60px;padding-bottom:80px;max-width:740px">
+  <div style="text-align:center;margin-bottom:56px">
+    <div class="hero-label">Enkelt som det låter</div>
+    <h2>Hur FlashDeal fungerar</h2>
+    <p style="color:var(--muted);font-size:16px;margin-top:12px;max-width:500px;margin-inline:auto">
+      Från notis till upphämtning på under fem minuter.
+    </p>
+  </div>
+
+  {% for icon, heading, body in [
+    ('📲', 'Prenumerera gratis', 'Skapa ett konto och välj de kategorier du gillar — Elektronik, Mode, Mat, Sport. Välj om du vill ha notiser via mail, SMS eller båda.'),
+    ('🔔', 'Få en notis', 'När en butik i din kategori publicerar ett erbjudande får du ett mail eller SMS direkt. Länken tar dig direkt till erbjudandet.'),
+    ('💳', 'Boka och betala', 'Klicka på erbjudandet, välj antal och betala direkt med kort via Stripe. Betalningen är säker och tar under 30 sekunder.'),
+    ('📧', 'Få din QR-kod', 'Direkt efter betalning får du en bokningsbekräftelse med en unik QR-kod. Den finns också i "Mina bokningar".'),
+    ('🏪', 'Hämta i butiken', 'Ta dig till butiken inom det tidsfönster som gäller. Visa QR-koden för personalen — de scannar den och du får din vara.'),
+  ] %}
+    <div style="display:flex;gap:24px;margin-bottom:40px;align-items:flex-start">
+      <div style="width:56px;height:56px;min-width:56px;background:var(--ink2);border:1px solid var(--border);border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:26px">{{ icon }}</div>
+      <div>
+        <h3 style="font-size:18px;font-family:'DM Sans',sans-serif;font-weight:700;margin-bottom:8px">{{ heading }}</h3>
+        <p style="color:var(--muted);font-size:15px;margin:0;line-height:1.7">{{ body }}</p>
+      </div>
+    </div>
+  {% endfor %}
+
+  <div style="background:var(--ink2);border:1px solid var(--border);border-radius:16px;padding:32px;text-align:center;margin-top:20px">
+    <div style="font-size:36px;margin-bottom:12px">⚡</div>
+    <h3 style="font-family:'DM Sans',sans-serif;font-size:20px;font-weight:700;margin-bottom:8px">Redo att hitta ditt första fynd?</h3>
+    <p style="color:var(--muted);margin-bottom:20px">Gratis att registrera sig. Inga prenumerationsavgifter.</p>
+    <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap">
+      <a href="{{ url_for('auth.register') }}" class="btn btn-primary btn-lg">Skapa konto</a>
+      <a href="{{ url_for('public.index') }}" class="btn btn-ghost btn-lg">Se erbjudanden</a>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin-panel — FlashDeal</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/light.css') }}">
+</head>
+<body>
+<div class="topbar">
+  <div style="display:flex;align-items:center;gap:16px">
+    <span class="topbar-logo">Flash<span>Deal</span></span>
+    <span style="font-size:11px;background:var(--accent);color:#fff;padding:2px 10px;border-radius:20px;font-weight:700;letter-spacing:1px">ADMIN</span>
+  </div>
+  <nav class="topbar-nav">
+    <a href="{{ url_for('admin.dashboard') }}" class="topbar-link {% if request.endpoint=='admin.dashboard' %}active{% endif %}">Översikt</a>
+    <a href="{{ url_for('admin.stores') }}" class="topbar-link {% if request.endpoint=='admin.stores' %}active{% endif %}">Butiker</a>
+    <a href="{{ url_for('admin.stores', status='pending') }}" class="topbar-link">
+      Väntande {% if pending_count %}<span style="background:var(--accent);color:#fff;border-radius:10px;padding:1px 7px;font-size:11px;margin-left:4px">{{ pending_count }}</span>{% endif %}
+    </a>
+    <a href="{{ url_for('admin.logout') }}" class="topbar-link">Logga ut</a>
+  </nav>
+</div>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+    <div class="flash-wrap">
+      {% for cat, msg in messages %}
+        <div class="flash flash-{{ cat }}">{{ msg }}</div>
+      {% endfor %}
+    </div>
+  {% endif %}
+{% endwith %}
+
+<div style="padding:28px">
+  <h2 style="font-size:20px;font-weight:700;margin-bottom:24px">Plattformsöversikt</h2>
+
+  <!-- Statistik -->
+  <div class="stats-grid" style="margin-bottom:36px">
+    <div class="stat-card accent">
+      <div class="stat-value">{{ pending_count }}</div>
+      <div class="stat-label">Väntande butiker</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value">{{ approved_count }}</div>
+      <div class="stat-label">Godkända butiker</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value">{{ recent_bookings|length }}</div>
+      <div class="stat-label">Senaste bokningar</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value">{{ total_revenue | int }} kr</div>
+      <div class="stat-label">Plattformsintäkt (senaste)</div>
+    </div>
+  </div>
+
+  <!-- Väntande butiker -->
+  {% if pending_stores %}
+    <div style="margin-bottom:32px">
+      <h3 style="font-size:16px;font-weight:700;margin-bottom:14px;color:var(--accent)">
+        ⚠️ Väntande godkännanden ({{ pending_stores|length }})
+      </h3>
+      <div style="display:flex;flex-direction:column;gap:12px">
+        {% for s in pending_stores %}
+          <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:18px 20px;display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+            <div style="flex:1;min-width:200px">
+              <div style="font-weight:600;font-size:15px">{{ s.business_name }}</div>
+              <div style="font-size:12px;color:var(--muted);margin-top:2px">
+                {{ s.email }} · {{ s.city or '—' }}
+                {% if s.contact_person %} · {{ s.contact_person }}{% endif %}
+              </div>
+              <div style="font-size:11px;color:var(--border2);margin-top:4px">
+                Registrerade: {{ (s.created_at or '')[:10] }}
+              </div>
+            </div>
+            <div style="display:flex;gap:8px">
+              <a href="{{ url_for('admin.store_detail', store_id=s.id) }}" class="btn btn-secondary btn-sm">Se mer</a>
+              <form method="POST" action="{{ url_for('admin.approve_store', store_id=s.id) }}" style="display:inline">
+                <button type="submit" class="btn btn-sm" style="background:var(--green);color:#fff">✓ Godkänn</button>
+              </form>
+              <form method="POST" action="{{ url_for('admin.reject_store', store_id=s.id) }}"
+                    onsubmit="return confirm('Avvisa {{ s.business_name }}?')" style="display:inline">
+                <button type="submit" class="btn btn-sm btn-danger">✕ Avvisa</button>
+              </form>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+  {% endif %}
+
+  <!-- Senaste bokningar -->
+  <div>
+    <h3 style="font-size:16px;font-weight:700;margin-bottom:14px">Senaste bokningar</h3>
+    {% if recent_bookings %}
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden">
+        <div class="table-wrap">
+          <table>
+            <thead><tr>
+              <th>Erbjudande</th>
+              <th>Butik</th>
+              <th>Belopp</th>
+              <th>Plattformsavgift</th>
+              <th>Status</th>
+              <th>Datum</th>
+            </tr></thead>
+            <tbody>
+              {% for b in recent_bookings %}
+                <tr>
+                  <td style="font-weight:500;color:var(--text)">{{ b.offer.get('title','—') }}</td>
+                  <td style="color:var(--muted2)">{{ b.store.get('business_name','—') }}</td>
+                  <td style="font-weight:600;color:var(--accent)">{{ b.total_paid | price }} kr</td>
+                  <td style="color:var(--green);font-weight:600">{{ b.platform_fee | price }} kr</td>
+                  <td>
+                    {% if b.status == 'picked_up' %}<span class="badge badge-green">Hämtad</span>
+                    {% elif b.status == 'confirmed' %}<span class="badge badge-orange">Bekräftad</span>
+                    {% else %}<span class="badge badge-gray">{{ b.status }}</span>{% endif %}
+                  </td>
+                  <td style="font-size:12px;color:var(--muted)">{{ (b.created_at or '')[:16].replace('T',' ') }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    {% else %}
+      <div style="text-align:center;padding:40px;color:var(--muted);border:1px dashed var(--border);border-radius:12px">
+        Inga bokningar ännu.
+      </div>
+    {% endif %}
+  </div>
+
+  <!-- Senaste kunder -->
+  <div style="margin-top:32px">
+    <h3 style="font-size:16px;font-weight:700;margin-bottom:14px">Senaste registrerade kunder</h3>
+    {% if recent_customers %}
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden">
+        <div class="table-wrap">
+          <table>
+            <thead><tr>
+              <th>Namn</th>
+              <th>E-post</th>
+              <th>Registrerad</th>
+            </tr></thead>
+            <tbody>
+              {% for c in recent_customers %}
+                <tr>
+                  <td style="color:var(--text)">{{ c.full_name or '—' }}</td>
+                  <td style="color:var(--muted2);font-size:13px">{{ c.email }}</td>
+                  <td style="font-size:12px;color:var(--muted)">{{ (c.created_at or '')[:16].replace('T',' ') }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    {% else %}
+      <div style="text-align:center;padding:40px;color:var(--muted);border:1px dashed var(--border);border-radius:12px">
+        Inga kunder registrerade än.
+      </div>
+    {% endif %}
+  </div>
+
+</div>
+</body>
+</html>

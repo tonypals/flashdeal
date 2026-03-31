@@ -1,0 +1,109 @@
+{% extends "base_light.html" %}
+{% block title %}Panel — {{ store.business_name }}{% endblock %}
+
+{% block content %}
+<div style="padding:28px 28px 0">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:28px;flex-wrap:wrap;gap:12px">
+    <div>
+      <h2 style="font-size:22px;font-weight:700;color:var(--text)">Välkommen, {{ store.business_name }}!</h2>
+      <p style="font-size:13px;color:var(--muted);margin-top:2px">Här är en överblick för idag</p>
+    </div>
+    <a href="{{ url_for('store.new_offer') }}" class="btn btn-primary btn-lg">
+      + Nytt erbjudande
+    </a>
+  </div>
+
+  <!-- Stripe-varning -->
+  {% if not stripe_ok %}
+    <div style="background:#fff8eb;border:1px solid #f0d060;border-radius:12px;padding:16px 20px;margin-bottom:24px;display:flex;align-items:center;gap:16px">
+      <div style="font-size:24px">⚠️</div>
+      <div>
+        <div style="font-weight:600;color:var(--yellow);font-size:14px">Koppla ditt bankkonto</div>
+        <div style="font-size:13px;color:var(--muted2);margin-top:3px">Du behöver ansluta Stripe för att ta emot betalningar från kunder.</div>
+      </div>
+      <a href="{{ url_for('store.stripe_onboard') }}" class="btn btn-sm" style="background:var(--yellow);color:#fff;margin-left:auto;white-space:nowrap">
+        Koppla nu →
+      </a>
+    </div>
+  {% endif %}
+
+  <!-- Statistik -->
+  <div class="stats-grid">
+    <div class="stat-card accent">
+      <div class="stat-value">{{ active_count }}</div>
+      <div class="stat-label">Aktiva erbjudanden</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value">{{ bookings_today }}</div>
+      <div class="stat-label">Bokningar idag</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value">{{ revenue_today | int }} kr</div>
+      <div class="stat-label">Intäkt idag (efter avgift)</div>
+    </div>
+  </div>
+
+  <!-- Erbjudandelista -->
+  <div style="display:flex;align-items:center;justify-content:space-between;margin:28px 0 12px">
+    <h3 style="font-size:16px;font-weight:700;color:var(--text)">Dina erbjudanden</h3>
+    <a href="{{ url_for('store.new_offer') }}" class="btn btn-sm btn-secondary">+ Lägg till</a>
+  </div>
+
+  {% if offers %}
+    <div class="offer-list" style="margin-bottom:40px">
+      {% for offer in offers %}
+        <div class="offer-row">
+          <div class="offer-row-img">
+            {% if offer.photo_url %}
+              <img src="{{ offer.photo_url }}" alt="">
+            {% else %}
+              📦
+            {% endif %}
+          </div>
+          <div class="offer-row-info">
+            <div class="offer-row-title">{{ offer.title }}</div>
+            <div class="offer-row-meta">
+              {{ offer.remaining_qty }}/{{ offer.total_quantity }} kvar
+              {% if offer.expires_at %}
+                · {{ offer.expires_at | timeago }}
+              {% endif %}
+            </div>
+          </div>
+          <div class="offer-row-price">{{ offer.deal_price | price }} kr</div>
+          <div>
+            {% if offer.status == 'draft' %}
+              <span class="badge badge-gray">Utkast</span>
+            {% elif offer.status == 'active' %}
+              <span class="badge badge-green">Aktiv</span>
+            {% elif offer.status == 'expired' %}
+              <span class="badge badge-gray">Utgången</span>
+            {% elif offer.status == 'cancelled' %}
+              <span class="badge badge-red">Avbruten</span>
+            {% endif %}
+          </div>
+          <div class="offer-row-actions">
+            {% if offer.status == 'draft' %}
+              <form method="POST" action="{{ url_for('store.publish_offer', offer_id=offer.id) }}" style="display:inline">
+                <input type="hidden" name="duration_hours" value="3">
+                <button type="submit" class="btn btn-sm btn-primary">Publicera</button>
+              </form>
+            {% elif offer.status == 'active' %}
+              <form method="POST" action="{{ url_for('store.cancel_offer', offer_id=offer.id) }}"
+                    onsubmit="return confirm('Avbryta erbjudandet?')">
+                <button type="submit" class="btn btn-sm" style="background:var(--card2);color:var(--muted2);border:1px solid var(--border2)">Avbryt</button>
+              </form>
+            {% endif %}
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div style="text-align:center;padding:60px 20px;color:var(--muted);border:1px dashed var(--border);border-radius:12px;margin-bottom:40px">
+      <div style="font-size:40px;margin-bottom:12px">📦</div>
+      <div style="font-weight:600;margin-bottom:6px">Inga erbjudanden ännu</div>
+      <div style="font-size:13px;margin-bottom:16px">Skapa ditt första erbjudande — prenumeranter notifieras direkt.</div>
+      <a href="{{ url_for('store.new_offer') }}" class="btn btn-primary">+ Skapa erbjudande</a>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

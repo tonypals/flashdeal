@@ -1,0 +1,16 @@
+{% extends "base_dark.html" %}
+{% block title %}Betalning mottagen — FlashDeal{% endblock %}
+{% block content %}
+<div style="max-width:420px;margin:100px auto;padding:0 24px;text-align:center">
+  <div style="font-size:52px;margin-bottom:16px">⏳</div>
+  <h2 style="margin-bottom:12px">Betalning mottagen!</h2>
+  <p style="color:var(--muted);line-height:1.7">
+    Vi behandlar din bokning — det tar bara några sekunder. Kontrollera
+    <a href="{{ url_for('booking.my_bookings') }}">dina bokningar</a> om du inte
+    omdirigeras automatiskt.
+  </p>
+  <a href="{{ url_for('booking.my_bookings') }}" class="btn btn-primary" style="margin-top:24px;display:inline-flex">
+    Mina bokningar →
+  </a>
+</div>
+{% endblock %}

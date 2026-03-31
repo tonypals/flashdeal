@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{{ store.business_name }} — Admin</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/light.css') }}">
+</head>
+<body>
+<div class="topbar">
+  <span class="topbar-logo">Flash<span>Deal</span> <span style="font-size:11px;background:var(--accent);color:#fff;padding:2px 10px;border-radius:20px;font-weight:700;letter-spacing:1px;margin-left:8px">ADMIN</span></span>
+  <nav class="topbar-nav">
+    <a href="{{ url_for('admin.dashboard') }}" class="topbar-link">Översikt</a>
+    <a href="{{ url_for('admin.stores') }}" class="topbar-link">Butiker</a>
+    <a href="{{ url_for('admin.logout') }}" class="topbar-link">Logga ut</a>
+  </nav>
+</div>
+
+<div style="padding:28px;max-width:800px">
+  <a href="{{ url_for('admin.stores') }}" style="color:var(--muted);font-size:13px">← Tillbaka</a>
+
+  <div style="margin-top:16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:24px">
+    <div>
+      <h2 style="font-size:22px;font-weight:700">{{ store.business_name }}</h2>
+      <div style="font-size:13px;color:var(--muted);margin-top:3px">{{ store.email }} · {{ store.city }}</div>
+    </div>
+    {% if store.status == 'pending' %}
+      <div style="display:flex;gap:8px">
+        <form method="POST" action="{{ url_for('admin.approve_store', store_id=store.id) }}">
+          <button class="btn btn-primary">✓ Godkänn</button>
+        </form>
+        <form method="POST" action="{{ url_for('admin.reject_store', store_id=store.id) }}"
+              onsubmit="return confirm('Avvisa?')">
+          <input type="text" name="note" placeholder="Anledning (valfritt)"
+                 style="border:1px solid var(--border);border-radius:8px;padding:8px 12px;font-size:13px;background:var(--card)">
+          <button class="btn btn-danger" style="margin-left:6px">✕ Avvisa</button>
+        </form>
+      </div>
+    {% elif store.status == 'approved' %}
+      <span class="badge badge-green" style="font-size:13px;padding:6px 14px">✓ Godkänd</span>
+    {% elif store.status == 'rejected' %}
+      <span class="badge badge-red" style="font-size:13px;padding:6px 14px">Avvisad</span>
+    {% endif %}
+  </div>
+
+  <!-- Info -->
+  <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:20px;display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:13px">
+    <div><span style="color:var(--muted)">Kontakt:</span> {{ store.contact_person or '—' }}</div>
+    <div><span style="color:var(--muted)">Telefon:</span> {{ store.phone or '—' }}</div>
+    <div><span style="color:var(--muted)">Adress:</span> {{ store.address or '—' }}</div>
+    <div><span style="color:var(--muted)">Stripe:</span>
+      {% if store.stripe_onboarding_done %}<span class="badge badge-green">Kopplat</span>
+      {% else %}<span class="badge badge-gray">Ej kopplat</span>{% endif %}
+    </div>
+    <div><span style="color:var(--muted)">Registrerad:</span> {{ (store.created_at or '')[:10] }}</div>
+    {% if store.rejection_note %}
+      <div style="grid-column:1/-1;color:var(--red)"><span style="color:var(--muted)">Avvisningskommentar:</span> {{ store.rejection_note }}</div>
+    {% endif %}
+  </div>
+
+  <!-- Erbjudanden -->
+  <h3 style="font-size:15px;font-weight:700;margin-bottom:12px">Erbjudanden ({{ offers|length }})</h3>
+  {% if offers %}
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:20px">
+      <table style="width:100%;border-collapse:collapse;font-size:13px">
+        <thead><tr>
+          <th style="text-align:left;padding:10px 14px;background:var(--card2);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--muted)">Titel</th>
+          <th style="text-align:left;padding:10px 14px;background:var(--card2);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--muted)">Pris</th>
+          <th style="text-align:left;padding:10px 14px;background:var(--card2);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--muted)">Status</th>
+          <th style="text-align:left;padding:10px 14px;background:var(--card2);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--muted)">Datum</th>
+        </tr></thead>
+        <tbody>
+          {% for o in offers %}
+            <tr style="{% if loop.index is even %}background:var(--surface){% endif %}">
+              <td style="padding:10px 14px;border-top:1px solid var(--border);color:var(--text);font-weight:500">{{ o.title }}</td>
+              <td style="padding:10px 14px;border-top:1px solid var(--border);color:var(--accent);font-weight:600">{{ o.deal_price | price }} kr</td>
+              <td style="padding:10px 14px;border-top:1px solid var(--border)">
+                {% if o.status == 'active' %}<span class="badge badge-green">Aktiv</span>
+                {% elif o.status == 'expired' %}<span class="badge badge-gray">Utgången</span>
+                {% elif o.status == 'cancelled' %}<span class="badge badge-red">Avbruten</span>
+                {% else %}<span class="badge badge-yellow">{{ o.status }}</span>{% endif %}
+              </td>
+              <td style="padding:10px 14px;border-top:1px solid var(--border);font-size:12px;color:var(--muted)">{{ (o.created_at or '')[:10] }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <div style="color:var(--muted);font-size:13px;margin-bottom:20px">Inga erbjudanden ännu.</div>
+  {% endif %}
+
+  <!-- Bokningar -->
+  <h3 style="font-size:15px;font-weight:700;margin-bottom:12px">Bokningar ({{ bookings|length }})</h3>
+  <div style="font-size:13px;color:var(--muted2)">
+    {% if bookings %}
+      Totalt inbetalt: <strong style="color:var(--accent)">{{ (bookings | map(attribute='total_paid') | map('float') | sum) | int }} kr</strong>
+      &nbsp;·&nbsp;
+      Plattformsavgift: <strong style="color:var(--green)">{{ (bookings | map(attribute='platform_fee') | map('float') | sum) | int }} kr</strong>
+    {% else %}
+      Inga bokningar.
+    {% endif %}
+  </div>
+</div>
+</body>
+</html>
