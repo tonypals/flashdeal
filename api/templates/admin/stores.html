@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Butiker — FlashDeal Admin</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/light.css') }}">
+</head>
+<body>
+<div class="topbar">
+  <span class="topbar-logo">Flash<span>Deal</span> <span style="font-size:11px;background:var(--accent);color:#fff;padding:2px 10px;border-radius:20px;font-weight:700;letter-spacing:1px;margin-left:8px">ADMIN</span></span>
+  <nav class="topbar-nav">
+    <a href="{{ url_for('admin.dashboard') }}" class="topbar-link">Översikt</a>
+    <a href="{{ url_for('admin.stores') }}" class="topbar-link active">Butiker</a>
+    <a href="{{ url_for('admin.logout') }}" class="topbar-link">Logga ut</a>
+  </nav>
+</div>
+
+<div style="padding:28px">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+    <h2 style="font-size:20px;font-weight:700">Butiker</h2>
+    <div style="display:flex;gap:8px">
+      {% for s, label in [('all','Alla'),('pending','Väntande'),('approved','Godkända'),('rejected','Avvisade')] %}
+        <a href="{{ url_for('admin.stores', status=s) }}"
+           class="btn btn-sm {% if active_status == s %}btn-primary{% else %}btn-secondary{% endif %}">
+          {{ label }}
+        </a>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden">
+    <div class="table-wrap">
+      <table>
+        <thead><tr>
+          <th>Butik</th><th>E-post</th><th>Stad</th><th>Status</th><th>Registrerad</th><th>Åtgärd</th>
+        </tr></thead>
+        <tbody>
+          {% for s in stores %}
+            <tr>
+              <td style="font-weight:600;color:var(--text)">
+                <a href="{{ url_for('admin.store_detail', store_id=s.id) }}" style="color:var(--accent)">{{ s.business_name }}</a>
+              </td>
+              <td style="color:var(--muted2);font-size:13px">{{ s.email }}</td>
+              <td style="color:var(--muted2);font-size:13px">{{ s.city or '—' }}</td>
+              <td>
+                {% if s.status == 'approved' %}<span class="badge badge-green">Godkänd</span>
+                {% elif s.status == 'pending' %}<span class="badge badge-yellow">Väntande</span>
+                {% elif s.status == 'rejected' %}<span class="badge badge-red">Avvisad</span>
+                {% else %}<span class="badge badge-gray">{{ s.status }}</span>{% endif %}
+              </td>
+              <td style="font-size:12px;color:var(--muted)">{{ (s.created_at or '')[:10] }}</td>
+              <td>
+                {% if s.status == 'pending' %}
+                  <form method="POST" action="{{ url_for('admin.approve_store', store_id=s.id) }}" style="display:inline">
+                    <button class="btn btn-sm" style="background:var(--green);color:#fff">✓</button>
+                  </form>
+                  <form method="POST" action="{{ url_for('admin.reject_store', store_id=s.id) }}" style="display:inline">
+                    <button class="btn btn-sm btn-danger">✕</button>
+                  </form>
+                {% endif %}
+              </td>
+            </tr>
+          {% else %}
+            <tr><td colspan="6" style="text-align:center;color:var(--muted);padding:32px">Inga butiker hittades.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+</body>
+</html>

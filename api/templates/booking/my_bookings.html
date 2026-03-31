@@ -1,0 +1,71 @@
+{% extends "base_dark.html" %}
+{% block title %}Mina bokningar — FlashDeal{% endblock %}
+
+{% block content %}
+<div class="container" style="padding-top:48px;padding-bottom:80px">
+  <div style="margin-bottom:32px">
+    <div class="hero-label">Mina bokningar</div>
+    <h2>{{ bookings|length }} bokning{{ 's' if bookings|length != 1 else '' }}</h2>
+  </div>
+
+  {% if bookings %}
+    <div style="display:flex;flex-direction:column;gap:14px">
+      {% for b in bookings %}
+        {% set offer = b.offer or {} %}
+        {% set store = b.store or {} %}
+        <div style="background:var(--ink2);border:1px solid var(--border);border-radius:14px;overflow:hidden;display:flex;gap:0">
+          <!-- Bild -->
+          {% if offer.get('photo_url') %}
+            <img src="{{ offer.photo_url }}"
+                 style="width:90px;min-width:90px;object-fit:cover;display:block" alt="">
+          {% else %}
+            <div style="width:90px;min-width:90px;background:var(--ink3);display:flex;align-items:center;justify-content:center;font-size:32px">📦</div>
+          {% endif %}
+
+          <!-- Info -->
+          <div style="flex:1;padding:16px 18px;display:flex;align-items:center;gap:20px;flex-wrap:wrap">
+            <div style="flex:1;min-width:160px">
+              <div style="font-weight:600;font-size:15px;margin-bottom:3px">{{ offer.get('title','—') }}</div>
+              <div style="font-size:13px;color:var(--muted)">
+                {{ store.get('business_name','') }}{% if store.get('city') %} · {{ store.city }}{% endif %}
+              </div>
+              <div style="font-size:12px;color:var(--soft);margin-top:4px">
+                {{ (b.created_at or '')[:10] }}
+              </div>
+            </div>
+            <div style="text-align:right">
+              <div style="font-size:18px;font-weight:700;color:var(--accent)">{{ b.total_paid | price }} kr</div>
+              <div style="margin-top:6px">
+                {% if b.status == 'picked_up' %}
+                  <span class="badge badge-green">✓ Hämtad</span>
+                {% elif b.payment_status == 'paid' and b.status == 'confirmed' %}
+                  <span class="badge badge-orange">Väntar upphämtning</span>
+                {% elif b.payment_status == 'pending' %}
+                  <span class="badge badge-gray">Betalning pending</span>
+                {% elif b.status == 'cancelled' %}
+                  <span class="badge badge-red">Avbruten</span>
+                {% endif %}
+              </div>
+            </div>
+            {% if b.payment_status == 'paid' and b.status == 'confirmed' and not b.qr_used %}
+              <a href="{{ url_for('booking.confirmation', booking_id=b.id) }}"
+                 class="btn btn-primary btn-sm">
+                Visa QR →
+              </a>
+            {% endif %}
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div style="text-align:center;padding:80px 20px;color:var(--muted2)">
+      <div style="font-size:52px;margin-bottom:16px">📭</div>
+      <h3 style="font-family:'DM Sans',sans-serif;font-weight:400">Inga bokningar ännu</h3>
+      <p style="margin-top:8px;font-size:14px">Hitta ett erbjudande och gör din första bokning!</p>
+      <a href="{{ url_for('public.index') }}" class="btn btn-primary" style="margin-top:20px;display:inline-flex">
+        Se erbjudanden →
+      </a>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

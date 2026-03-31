@@ -1,0 +1,25 @@
+{% extends "base_light.html" %}
+{% block title %}Scan-resultat — FlashDeal{% endblock %}
+
+{% block content %}
+<div style="max-width:400px;margin:60px auto;padding:0 20px;text-align:center">
+  {% if result.ok %}
+    <div style="background:#eef8f4;border:2px solid var(--green);border-radius:16px;padding:32px">
+      <div style="font-size:56px;margin-bottom:12px">✅</div>
+      <h2 style="color:var(--green);font-size:22px;margin-bottom:8px">{{ result.msg }}</h2>
+      {% if result.title %}<div style="font-weight:600;font-size:16px;margin-bottom:4px">{{ result.title }}</div>{% endif %}
+      {% if result.customer %}<div style="color:var(--muted);font-size:14px">{{ result.customer }}</div>{% endif %}
+      {% if result.qty %}<div style="color:var(--muted);font-size:13px;margin-top:6px">Antal: {{ result.qty }}</div>{% endif %}
+    </div>
+  {% else %}
+    <div style="background:#fef0f0;border:2px solid var(--red);border-radius:16px;padding:32px">
+      <div style="font-size:56px;margin-bottom:12px">❌</div>
+      <h2 style="color:var(--red);font-size:20px">{{ result.msg }}</h2>
+    </div>
+  {% endif %}
+  <div style="margin-top:24px;display:flex;gap:12px;justify-content:center;flex-wrap:wrap">
+    <a href="{{ url_for('store.scanner') }}" class="btn btn-primary">📷 Skanna igen</a>
+    <a href="{{ url_for('store.bookings') }}" class="btn btn-secondary">← Bokningar</a>
+  </div>
+</div>
+{% endblock %}

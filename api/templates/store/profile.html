@@ -1,0 +1,68 @@
+{% extends "base_light.html" %}
+{% block title %}Profil — {{ store.business_name }}{% endblock %}
+
+{% block content %}
+<div style="padding:28px;max-width:640px">
+  <div style="margin-bottom:24px">
+    <a href="{{ url_for('store.dashboard') }}" style="color:var(--muted);font-size:13px">← Tillbaka till panel</a>
+    <h2 style="font-size:20px;font-weight:700;margin-top:8px">Butiksprofil</h2>
+  </div>
+
+  <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px;margin-bottom:20px">
+    <div style="font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:16px">Kontoinformation</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:13px;color:var(--muted2)">
+      <div><strong style="color:var(--text)">Butik:</strong> {{ store.business_name }}</div>
+      <div><strong style="color:var(--text)">E-post:</strong> {{ store.email }}</div>
+      <div><strong style="color:var(--text)">Stad:</strong> {{ store.city }}</div>
+      <div><strong style="color:var(--text)">Status:</strong>
+        {% if store.status == 'approved' %}<span class="badge badge-green">Godkänd</span>
+        {% else %}<span class="badge badge-yellow">{{ store.status }}</span>{% endif %}
+      </div>
+    </div>
+  </div>
+
+  <form method="POST" style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px">
+    <div class="form-group">
+      <label class="form-label" for="description">Beskrivning av butiken</label>
+      <textarea name="description" id="description" class="form-control" rows="3"
+                placeholder="Berätta lite om er butik...">{{ store.description or '' }}</textarea>
+    </div>
+    <div class="form-group">
+      <label class="form-label" for="address">Adress</label>
+      <input type="text" name="address" id="address" class="form-control"
+             value="{{ store.address or '' }}" placeholder="Gatuadress 1, Göteborg">
+    </div>
+    <div class="form-group">
+      <label class="form-label" for="phone">Telefon</label>
+      <input type="tel" name="phone" id="phone" class="form-control"
+             value="{{ store.phone or '' }}" placeholder="+46701234567">
+    </div>
+    <div class="form-group">
+      <label class="form-label" for="policy_text">Bokningsvillkor</label>
+      <textarea name="policy_text" id="policy_text" class="form-control" rows="3"
+                placeholder="Vad händer om kunden inte hämtar?">{{ store.policy_text or '' }}</textarea>
+      <div class="form-hint">Visas tydligt för kunden innan de bokar.</div>
+    </div>
+    <div class="form-group">
+      <label class="form-label" for="pickup_instructions">Upphämtningsinstruktioner</label>
+      <textarea name="pickup_instructions" id="pickup_instructions" class="form-control" rows="2"
+                placeholder="t.ex. Gå till kundservice i ingång B...">{{ store.pickup_instructions or '' }}</textarea>
+    </div>
+    <button type="submit" class="btn btn-primary">Spara ändringar</button>
+  </form>
+
+  <!-- Stripe-status -->
+  <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px;margin-top:20px">
+    <div style="font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:12px">Betalningsinställningar</div>
+    {% if store.stripe_onboarding_done %}
+      <div style="display:flex;align-items:center;gap:10px">
+        <span class="badge badge-green">✓ Stripe kopplat</span>
+        <span style="font-size:13px;color:var(--muted)">Bankkonto ansluten, redo att ta emot betalningar.</span>
+      </div>
+    {% else %}
+      <p style="font-size:13px;color:var(--muted2);margin-bottom:12px">Koppla ert bankkonto via Stripe för att ta emot betalningar.</p>
+      <a href="{{ url_for('store.stripe_onboard') }}" class="btn btn-primary btn-sm">Koppla bankkonto →</a>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

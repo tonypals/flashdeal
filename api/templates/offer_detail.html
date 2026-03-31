@@ -1,0 +1,125 @@
+{% extends "base_dark.html" %}
+{% block title %}{{ offer.title }} — FlashDeal{% endblock %}
+
+{% block content %}
+<div class="container" style="padding-top:40px;padding-bottom:80px;max-width:780px">
+  <!-- Tillbaka -->
+  <a href="{{ url_for('public.index') }}" style="color:var(--muted2);font-size:13px;display:inline-flex;align-items:center;gap:6px;margin-bottom:24px">
+    ← Tillbaka till erbjudanden
+  </a>
+
+  <div style="display:grid;grid-template-columns:1fr 340px;gap:32px;align-items:start">
+
+    <!-- Vänster: info -->
+    <div>
+      {% if offer.photo_url %}
+        <img src="{{ offer.photo_url }}" alt="{{ offer.title }}"
+             style="width:100%;border-radius:14px;max-height:360px;object-fit:cover;margin-bottom:24px">
+      {% endif %}
+
+      {% if category %}
+        <div style="font-size:11px;letter-spacing:2px;color:var(--accent);text-transform:uppercase;margin-bottom:10px">
+          {{ category.icon }} {{ category.name }}
+        </div>
+      {% endif %}
+
+      <h1 style="font-size:clamp(22px,4vw,34px);margin-bottom:12px">{{ offer.title }}</h1>
+
+      {% if store %}
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px">
+          <div>
+            <div style="font-weight:600;font-size:15px">{{ store.business_name }}</div>
+            <div style="font-size:13px;color:var(--muted)">📍 {{ store.address or store.city }}</div>
+          </div>
+        </div>
+      {% endif %}
+
+      {% if offer.description %}
+        <p style="color:var(--muted);line-height:1.7;margin-bottom:24px">{{ offer.description }}</p>
+      {% endif %}
+
+      <!-- Butikens policy -->
+      {% if store and store.policy_text %}
+        <div style="background:var(--ink2);border:1px solid var(--border);border-radius:10px;padding:16px 20px;margin-bottom:16px">
+          <div style="font-size:12px;font-weight:700;color:var(--yellow);margin-bottom:6px;letter-spacing:.5px">⚠️ BUTIKENS VILLKOR</div>
+          <p style="font-size:13px;color:var(--muted);margin:0">{{ store.policy_text }}</p>
+        </div>
+      {% endif %}
+
+      {% if store and store.pickup_instructions %}
+        <div style="background:var(--ink2);border:1px solid var(--border);border-radius:10px;padding:16px 20px">
+          <div style="font-size:12px;font-weight:700;color:var(--green);margin-bottom:6px">📍 UPPHÄMTNING</div>
+          <p style="font-size:13px;color:var(--muted);margin:0">{{ store.pickup_instructions }}</p>
+        </div>
+      {% endif %}
+    </div>
+
+    <!-- Höger: bokningspanel -->
+    <div style="position:sticky;top:80px">
+      <div style="background:var(--ink2);border:1px solid var(--border);border-radius:16px;padding:24px">
+        <div style="font-size:34px;font-weight:700;color:var(--accent);margin-bottom:4px">
+          {{ offer.deal_price | price }} kr
+        </div>
+        {% if offer.original_price %}
+          <div style="font-size:14px;color:var(--soft);text-decoration:line-through;margin-bottom:16px">
+            Ord. {{ offer.original_price | price }} kr
+          </div>
+        {% endif %}
+
+        <!-- Timer -->
+        <div style="background:var(--ink3);border:1px solid var(--border);border-radius:8px;padding:12px 14px;margin-bottom:16px;display:flex;align-items:center;gap:8px">
+          <div class="timer-dot"></div>
+          <span style="font-size:13px;color:var(--yellow);font-weight:600">{{ offer.expires_at | timeago }}</span>
+        </div>
+
+        <!-- Antal kvar -->
+        <div style="font-size:13px;color:var(--muted);margin-bottom:20px">
+          {% set remaining = offer.remaining_qty - booked_qty %}
+          {% if remaining > 0 %}
+            <span style="color:var(--green)">✓</span> {{ remaining }} st tillgängliga
+          {% else %}
+            <span style="color:var(--red)">Utsåld</span>
+          {% endif %}
+        </div>
+
+        {% if offer.status == 'active' and (offer.remaining_qty - booked_qty) > 0 %}
+          {% if session.get('user_id') %}
+            <form action="{{ url_for('booking.checkout', offer_id=offer.id) }}" method="POST">
+              {% if offer.remaining_qty > 1 %}
+                <div style="margin-bottom:14px">
+                  <label style="font-size:12px;color:var(--muted);display:block;margin-bottom:6px">Antal</label>
+                  <select name="quantity" class="form-control" style="width:100%">
+                    {% for i in range(1, [offer.remaining_qty - booked_qty + 1, 6]|min) %}
+                      <option value="{{ i }}">{{ i }} st</option>
+                    {% endfor %}
+                  </select>
+                </div>
+              {% else %}
+                <input type="hidden" name="quantity" value="1">
+              {% endif %}
+              <button type="submit" class="btn btn-primary" style="width:100%;font-size:16px;padding:14px">
+                💳 Boka nu
+              </button>
+            </form>
+          {% else %}
+            <a href="{{ url_for('auth.login') }}?next={{ request.path }}" class="btn btn-primary" style="width:100%;text-align:center;font-size:15px;padding:13px">
+              Logga in för att boka
+            </a>
+            <a href="{{ url_for('auth.register') }}" class="btn btn-ghost" style="width:100%;text-align:center;margin-top:8px">
+              Skapa konto
+            </a>
+          {% endif %}
+        {% else %}
+          <div class="btn" style="width:100%;background:var(--ink3);color:var(--muted);cursor:default;justify-content:center">
+            Inte tillgänglig
+          </div>
+        {% endif %}
+
+        <p style="font-size:11px;color:var(--soft);text-align:center;margin-top:12px">
+          Betalning sker direkt vid bokning
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

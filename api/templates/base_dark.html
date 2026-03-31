@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{% block title %}FlashDeal{% endblock %}</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/dark.css') }}">
+{% block extra_head %}{% endblock %}
+</head>
+<body>
+
+<nav class="nav">
+  <a href="{{ url_for('public.index') }}" class="nav-logo">Flash<span>Deal</span></a>
+  <div class="nav-links">
+    <a href="{{ url_for('public.how_it_works') }}" class="nav-link">Hur det fungerar</a>
+    <a href="{{ url_for('public.stores_list') }}" class="nav-link">Butiker</a>
+    <a href="{{ url_for('public.for_stores') }}" class="nav-link">För butiker</a>
+    {% if session.get('user_id') %}
+      <a href="{{ url_for('booking.my_bookings') }}" class="nav-link">Mina bokningar</a>
+      <a href="{{ url_for('auth.logout') }}" class="nav-link">Logga ut</a>
+    {% else %}
+      <a href="{{ url_for('auth.login') }}" class="nav-link">Logga in</a>
+      <a href="{{ url_for('auth.register') }}" class="nav-btn nav-link">Registrera</a>
+    {% endif %}
+  </div>
+</nav>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+    <div class="flash-wrap">
+      {% for category, message in messages %}
+        <div class="flash flash-{{ category }}">{{ message }}</div>
+      {% endfor %}
+    </div>
+  {% endif %}
+{% endwith %}
+
+{% block content %}{% endblock %}
+
+<footer class="footer">
+  <p><strong>FlashDeal</strong> — Tidsbegränsade erbjudanden i fysiska butiker</p>
+  <p style="margin-top:8px;font-size:12px">
+    <a href="{{ url_for('public.how_it_works') }}" style="color:inherit">Hur det fungerar</a> &nbsp;·&nbsp;
+    <a href="{{ url_for('public.for_stores') }}" style="color:inherit">För butiker</a> &nbsp;·&nbsp;
+    <a href="{{ url_for('auth.store_register') }}" style="color:inherit">Registrera din butik</a>
+  </p>
+</footer>
+
+{% block scripts %}{% endblock %}
+</body>
+</html>

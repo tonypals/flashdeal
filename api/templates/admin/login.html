@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin — FlashDeal</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/light.css') }}">
+</head>
+<body style="display:flex;align-items:center;justify-content:center;min-height:100vh;background:var(--bg)">
+  <div style="width:320px">
+    <div style="text-align:center;margin-bottom:28px">
+      <div style="font-size:28px;font-weight:800;color:var(--text)">Flash<span style="color:var(--accent)">Deal</span></div>
+      <div style="font-size:12px;color:var(--muted);margin-top:4px;letter-spacing:1px">PLATTFORMSADMIN</div>
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% for cat, msg in messages %}
+        <div class="flash flash-{{ cat }}" style="margin-bottom:12px">{{ msg }}</div>
+      {% endfor %}
+    {% endwith %}
+
+    <form method="POST" style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:28px;box-shadow:var(--shadow)">
+      <div class="form-group">
+        <label class="form-label" for="pin">Admin PIN-kod</label>
+        <input type="password" name="pin" id="pin" class="form-control"
+               placeholder="••••••" maxlength="10" autofocus inputmode="numeric">
+      </div>
+      <button type="submit" class="btn btn-primary" style="width:100%;padding:12px">
+        Logga in
+      </button>
+    </form>
+  </div>
+</body>
+</html>
